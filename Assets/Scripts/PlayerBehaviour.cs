@@ -27,7 +27,7 @@ public class PlayerBehaviour : MonoBehaviour
     {
         if (fuel > 0 && Input.GetKey(KeyCode.Space))
         {
-            // Always thrust forward ("up" from the rocket's POV)
+            // Always thrust forward ("up" from the rocket's POV), and amplify when space bar is held down
             Vector3 thrusterDirection = rigidbody.transform.up;
             rigidbody.AddForce(thrusterDirection * thrusterForce);
             fuel -= fuel_consumption * Time.deltaTime;
