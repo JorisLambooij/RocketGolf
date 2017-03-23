@@ -4,10 +4,13 @@ using UnityEngine;
 
 public class PlayerBehaviour : MonoBehaviour
 {
-    public Rigidbody rigidbody;
+    public Rigidbody playerRB;
+
+    public float maxVelocity;
 
     public float thrusterForce;
     public float steeringForce;
+    public float passiveCorrection;
 
     public float fuel;
     public float fuel_consumption;
@@ -27,23 +30,34 @@ public class PlayerBehaviour : MonoBehaviour
     {
         if (fuel > 0 && Input.GetKey(KeyCode.Space))
         {
-            // Always thrust forward ("up" from the rocket's POV), and amplify when space bar is held down
-            Vector3 thrusterDirection = rigidbody.transform.up;
-            rigidbody.AddForce(thrusterDirection * thrusterForce);
-            fuel -= fuel_consumption * Time.deltaTime;
+            Vector3 thrustForce = playerRB.transform.up * thrusterForce;
+            playerRB.AddForce(thrustForce);
         }
 
+        Vector3 currVelocity = playerRB.velocity;
+        Vector3 currDirection = playerRB.transform.up * currVelocity.magnitude;
+        Vector3 correctionForce = (currDirection - currVelocity) * passiveCorrection * Time.deltaTime;
+
+        //Vector3 force = playerRB.transform.up * passiveThrust;
+        //vel += new Vector3(0, -1, 0) * Gravity.gravityForce * Time.deltaTime;
+
+        playerRB.AddForce(correctionForce);
+        playerRB.AddForce(new Vector3(0, -1, 0) * Gravity.gravityForce * Time.deltaTime);
+        
+        //Debug.Log("current v: " + currVelocity.magnitude);
+
         // Torque for A and D keys
-        Vector3 torque1 = rigidbody.transform.right * Input.GetAxis("Horizontal") * steeringForce;
+        Vector3 torque1 = playerRB.transform.right * Input.GetAxis("Horizontal") * steeringForce;
         // Torque for W and S keys
-        Vector3 torque2 = rigidbody.transform.forward * Input.GetAxis("Vertical") * steeringForce; 
+        Vector3 torque2 = playerRB.transform.forward * Input.GetAxis("Vertical") * steeringForce; 
         // The sum of both inputs
-        rigidbody.AddTorque(torque1 + torque2);
+        playerRB.AddTorque(torque1 + torque2);
     }
 
-    void OnCollisionEnter(Collision collisionOBJ)
+    void OnTriggerEnter(Collider collider)
     {
-        if (collisionOBJ.collider.CompareTag("Finish"))
+        // Check for Power-Ups here
+        if (collider.CompareTag("Finish"))
         {
             Debug.Log("YOU WIN!");
             UnityEngine.SceneManagement.SceneManager.LoadScene("Game");
