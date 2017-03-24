@@ -5,7 +5,9 @@ using UnityEngine;
 public class PlayerBehaviour : MonoBehaviour
 {
     public Rigidbody playerRB;
-    public Transform goal; 
+    public Transform goal;
+    public ProjectileManager pManager;
+    public CameraBehaviour cam;
 
     public bool invertX;
     public bool invertY;
@@ -22,12 +24,17 @@ public class PlayerBehaviour : MonoBehaviour
     public float fuel;
     public float fuel_consumption;
 
+    public float ShotFrequency;
+    public float DamagePerShot;
+
     private bool grounded;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
     private float launchTimer;
     private int countdown;
     private float fuelAfter;
+
+    private float shotTimer;
 
     public enum GamePhase { Launch, Fly };
     private GamePhase phase; 
@@ -39,6 +46,7 @@ public class PlayerBehaviour : MonoBehaviour
         fuelTimerIncreasing = true;
         launchTimer = 5;
         countdown = 5;
+        shotTimer = 0;
     }
 
 	void Update ()
@@ -71,6 +79,7 @@ public class PlayerBehaviour : MonoBehaviour
 
     private void Phase_Launch()
     {
+        Combat();
         LaunchCountdown();
 
         // The timer to swing the arrow back and forth
@@ -124,6 +133,8 @@ public class PlayerBehaviour : MonoBehaviour
 
     private void Phase_Fly()
     {
+        Combat();
+
         if (fuel > 0 && Input.GetKey(KeyCode.Space))
         {
             // Apply forward thrust
@@ -145,8 +156,26 @@ public class PlayerBehaviour : MonoBehaviour
             Vector3 correctionForce = (currDirection - currVelocity) * passiveCorrection * Time.deltaTime;
             playerRB.AddForce(correctionForce);
         }
+
+        // Disable controls (except for thrust) after collision
         if (!grounded)
             RotationControls();
+    }
+
+    // Shooting etc.
+    void Combat()
+    {
+        shotTimer -= Time.deltaTime;
+        if (shotTimer <= 0 && Input.GetMouseButton(0))
+        {
+            // Shoot
+            //Debug.DrawRay(this.transform.position, cam.CameraDirection * 4, Color.red);
+            //Debug.Break();
+
+            pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+
+            shotTimer = 1 / ShotFrequency;
+        }
     }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)

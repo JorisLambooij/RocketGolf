@@ -67,4 +67,9 @@ public class CameraBehaviour : MonoBehaviour
         // Make the camera look at the rocket
         this.transform.rotation = Quaternion.Euler(Mathf.Sin(radPitch) * 90, -angleYaw - 90, 0);
     }
+
+    public Vector3 CameraDirection
+    {
+        get { return (playerTransform.position - this.transform.position).normalized; }
+    }
 }
