@@ -23,13 +23,22 @@ public class PlayerBehaviour : MonoBehaviour
     public float fuel_consumption;
 
     private bool grounded;
+    private float fuelTimer = 0;
+    private bool fuelTimerIncreasing;
+    private float launchTimer;
+    private int countdown;
+    private float fuelAfter;
 
-    private enum GamePhase { Launch, Fly };
+    public enum GamePhase { Launch, Fly };
     private GamePhase phase; 
 
     void Start()
     {
         phase = GamePhase.Launch;
+        fuelTimer = 0.2f;
+        fuelTimerIncreasing = true;
+        launchTimer = 5;
+        countdown = 5;
     }
 
 	void Update ()
@@ -40,10 +49,14 @@ public class PlayerBehaviour : MonoBehaviour
             case GamePhase.Fly: Phase_Fly(); break;
         }
 
-        if (playerRB.velocity.magnitude < 0.25 && grounded)
+        if (grounded && playerRB.velocity.magnitude < 0.35)
         {
             phase = GamePhase.Launch;
             playerRB.useGravity = false;
+            grounded = false;
+            launchTimer = 5;
+
+            playerRB.transform.position += new Vector3(0, 4, 0);
 
             playerRB.transform.up = goal.transform.position - playerRB.transform.position;
             //playerRB.transform.right = new Vector3(0, -1, 0);
@@ -55,23 +68,59 @@ public class PlayerBehaviour : MonoBehaviour
             playerRB.velocity = Vector3.zero;
             
         }
-       
     }
 
     private void Phase_Launch()
     {
-        playerRB.useGravity = false;
-        grounded = false;
-        if (Input.GetKey(KeyCode.Space))
+        LaunchCountdown();
+
+        // The timer to swing the arrow back and forth
+        // to determine the amount of fuel used for launch
+        if (fuelTimerIncreasing)
+            fuelTimer += Time.deltaTime;
+        else
+            fuelTimer -= Time.deltaTime;
+
+        if (fuelTimer >= 1)
+            fuelTimerIncreasing = false;
+        else if (fuelTimer <= 0)
+            fuelTimerIncreasing = true;
+        
+        // The fuel that will be left in the tank with the current timing
+        fuelAfter = fuel - (fuelTimer) * maxLaunchFuel;
+        
+        // When there is less fuel left than the player could potentially use, adjust the timer mechanic
+        if(fuel - maxLaunchFuel < 0)
         {
-            Vector3 thrustForce = playerRB.transform.up * thrusterForce * launchForce * Time.deltaTime * 100;
+            // Timer goes between "0" and "fuel" instead of "fuel - maxLaunchFuel" and "fuel"
+            // (In practice this means the arrow will swing slower)
+            fuelAfter = (1 - fuelTimer) * fuel;
+        }
+
+        if (Input.GetKey(KeyCode.Space) || launchTimer <= 0)
+        {
+            // Adjust the force according to the amount of fuel consumed
+            // Add a little bit to the fuel consumed to boost very weak launches (prevents "zero-force"-launches)
+            Vector3 thrustForce = playerRB.transform.up * launchForce * (20 + fuel - fuelAfter) * Time.deltaTime * 20;
             playerRB.AddForce(thrustForce);
+            
+            // Adjust fuel stand
+            fuel = fuelAfter;
 
             playerRB.useGravity = true;
             phase = GamePhase.Fly;
+
+            countdown = 0;
         }
         playerRB.velocity = Vector3.zero;
         RotationControls();
+    }
+
+    private void LaunchCountdown()
+    {
+        countdown = (int)launchTimer + 1;
+        // Maybe add super cool sound effects here?
+        launchTimer -= Time.deltaTime;
     }
 
     private void Phase_Fly()
@@ -90,9 +139,9 @@ public class PlayerBehaviour : MonoBehaviour
         Vector3 currDirection = playerRB.transform.up * currVelocity.magnitude;
         float angle = Vector3.Angle(currDirection, currVelocity);
 
-        // Apply the "correction force" only when the rocket is aligned properly ( -60° < angle < 60° )
+        // Apply the "correction force" only when the rocket is aligned properly ( -20° < angle < 20° )
         // This prevents the correction force from acting as a "brake force", slowing down the fall of the rocket
-        if ( Mathf.Abs(angle) < 30 && currVelocity.magnitude > maxVelocity * 0.3)
+        if ( Mathf.Abs(angle) < 20 && currVelocity.magnitude > maxVelocity * 0.3)
         {
             Vector3 correctionForce = (currDirection - currVelocity) * passiveCorrection * Time.deltaTime;
             playerRB.AddForce(correctionForce);
@@ -136,4 +185,24 @@ public class PlayerBehaviour : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.LoadScene("Game");
         }
     }
+
+    public float FuelTimer
+    {
+        get { return fuelTimer; }
+    }
+
+    public GamePhase CurrentPhase
+    {
+        get { return phase; }
+    }
+
+    public int Countdown
+    {
+        get { return countdown; }
+    }
+
+    public float FuelAfter
+    {
+        get { return fuelAfter; }
+     }
 }
