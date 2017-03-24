@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerBehaviour : MonoBehaviour
 {
     public Rigidbody playerRB;
+    public Transform goal; 
 
     public bool invertX;
     public bool invertY;
@@ -18,6 +19,8 @@ public class PlayerBehaviour : MonoBehaviour
 
     public float fuel;
     public float fuel_consumption;
+
+    private bool grounded;
 
     private enum GamePhase { Launch, Fly };
     private GamePhase phase; 
@@ -34,11 +37,29 @@ public class PlayerBehaviour : MonoBehaviour
             case GamePhase.Launch: Phase_Launch(); break;
             case GamePhase.Fly: Phase_Fly(); break;
         }
-	}
+
+        if (playerRB.velocity.magnitude < 0.25 && grounded)
+        {
+            phase = GamePhase.Launch;
+            playerRB.useGravity = false;
+
+            playerRB.transform.up = goal.transform.position - playerRB.transform.position;
+            //playerRB.transform.right = new Vector3(0, -1, 0);
+
+            float angle = Vector3.Angle(playerRB.transform.right, -Vector3.up);
+            playerRB.transform.RotateAround(playerRB.transform.position, playerRB.transform.up, angle);
+
+            playerRB.transform.position += new Vector3(0, 4, 0);
+            playerRB.velocity = Vector3.zero;
+            
+        }
+       
+    }
 
     private void Phase_Launch()
     {
         playerRB.useGravity = false;
+        grounded = false;
         if (Input.GetKey(KeyCode.Space))
         {
             Vector3 thrustForce = playerRB.transform.up * thrusterForce * launchForce * Time.deltaTime * 100;
@@ -47,7 +68,7 @@ public class PlayerBehaviour : MonoBehaviour
             playerRB.useGravity = true;
             phase = GamePhase.Fly;
         }
-
+        playerRB.velocity = Vector3.zero;
         RotationControls();
     }
 
@@ -74,8 +95,8 @@ public class PlayerBehaviour : MonoBehaviour
             Vector3 correctionForce = (currDirection - currVelocity) * passiveCorrection * Time.deltaTime;
             playerRB.AddForce(correctionForce);
         }
-
-        RotationControls();
+        if (!grounded)
+            RotationControls();
     }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)
@@ -100,11 +121,7 @@ public class PlayerBehaviour : MonoBehaviour
     {
         if (collision.collider.CompareTag("Ground"))
         {
-            phase = GamePhase.Launch;
-            playerRB.useGravity = false;
-
-            playerRB.transform.position += new Vector3(0, 4, 0);
-            playerRB.velocity = Vector3.zero;
+            grounded = true;
         }
     }
 
