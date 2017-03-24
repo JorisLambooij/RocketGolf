@@ -57,16 +57,15 @@ public class PlayerBehaviour : MonoBehaviour
             launchTimer = 5;
 
             playerRB.transform.position += new Vector3(0, 4, 0);
+            playerRB.angularVelocity = Vector3.zero;
 
-            playerRB.transform.up = goal.transform.position - playerRB.transform.position;
-            //playerRB.transform.right = new Vector3(0, -1, 0);
+            Vector3 goalDir = goal.transform.position - playerRB.transform.position;
 
-            float angle = Vector3.Angle(playerRB.transform.right, -Vector3.up);
-            playerRB.transform.RotateAround(playerRB.transform.position, playerRB.transform.up, angle);
+            float angle = Vector3.Angle(goalDir, Vector3.forward);
+            if (goalDir.x < 0)
+                angle *= -1;
 
-            playerRB.transform.position += new Vector3(0, 4, 0);
-            playerRB.velocity = Vector3.zero;
-            
+            playerRB.transform.rotation = Quaternion.Euler(new Vector3(0,-90 + angle,-90));
         }
     }
 
