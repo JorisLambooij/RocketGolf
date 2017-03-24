@@ -12,6 +12,8 @@ public class PlayerBehaviour : MonoBehaviour
     public float maxVelocity;
 
     public float launchForce;
+    public float maxLaunchFuel;
+
     public float thrusterForce;
     public float steeringForce;
     public float passiveCorrection;
@@ -69,7 +71,7 @@ public class PlayerBehaviour : MonoBehaviour
 
         // Apply the "correction force" only when the rocket is aligned properly ( -60° < angle < 60° )
         // This prevents the correction force from acting as a "brake force", slowing down the fall of the rocket
-        if ( Mathf.Abs(angle) < 60 )
+        if ( Mathf.Abs(angle) < 30 && currVelocity.magnitude > maxVelocity * 0.3)
         {
             Vector3 correctionForce = (currDirection - currVelocity) * passiveCorrection * Time.deltaTime;
             playerRB.AddForce(correctionForce);
