@@ -281,6 +281,7 @@ public class PlayerBehaviour : MonoBehaviour
         {
             grounded = true;
             playerRB.drag = 0.0005f;
+            playerRB.freezeRotation = true;
         }
     }
 
