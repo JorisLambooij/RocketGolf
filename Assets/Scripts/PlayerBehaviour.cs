@@ -269,31 +269,26 @@ public class PlayerBehaviour : MonoBehaviour
             // Fuel
             if (powerUp.type == PowerUp.Type.Fuel)
             {
-                if (fuel + powerUp.value > 100)
-                {
-                    fuel = 100;
-                }
-                else
-                {
-                    fuel += powerUp.value;
-                }
-
+                // 15% fuel per Power-Up lvl
+                fuel += powerUp.value * 15;
+                fuel = Mathf.Min(fuel, 100);
             }
 
             // Speed 
             if (powerUp.type == PowerUp.Type.Speed)
             {
-                Vector3 thrustForce = playerRB.transform.up * thrusterForce * powerUp.value;
+                // ThrusterForce equal to the force the player would get when thrusting for 1 sec (roughly) 
+                // Multiplied with Power-Up lvl
+                Vector3 thrustForce = playerRB.transform.up * thrusterForce * 60 * powerUp.value;
                 playerRB.AddForce(thrustForce);
             }
 
             // Health
             if (powerUp.type == PowerUp.Type.Health)
             {
-                // INSERT HEALTH INCREASE
+                // 15% health regained per Power-Up lvl
+                health += maxHealth * 15 * powerUp.value;
             }
-
-
         }
     }
 
