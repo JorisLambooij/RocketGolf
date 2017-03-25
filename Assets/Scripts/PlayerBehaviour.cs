@@ -36,6 +36,8 @@ public class PlayerBehaviour : MonoBehaviour
 
     private float shotTimer;
 
+    private PowerUp powerUp;
+
     public enum GamePhase { Launch, Fly };
     private GamePhase phase; 
 
@@ -204,6 +206,8 @@ public class PlayerBehaviour : MonoBehaviour
         }
     }
 
+
+
     void OnTriggerEnter(Collider collider)
     {
         // Check for Power-Ups here
@@ -211,6 +215,43 @@ public class PlayerBehaviour : MonoBehaviour
         {
             Debug.Log("YOU WIN!");
             UnityEngine.SceneManagement.SceneManager.LoadScene("Game");
+        }
+
+        if (collider.CompareTag("Power-Up"))
+        {
+            // Remove power up object
+            Destroy(collider.gameObject);
+            Debug.Log("POWER UP");
+            powerUp = collider.GetComponent<PowerUp>();
+
+            // Fuel
+            if (powerUp.type == PowerUp.Type.Fuel)
+            {
+                if (fuel + powerUp.value > 100)
+                {
+                    fuel = 100;
+                }
+                else
+                {
+                    fuel += powerUp.value;
+                }
+
+            }
+
+            // Speed 
+            if (powerUp.type == PowerUp.Type.Speed)
+            {
+                Vector3 thrustForce = playerRB.transform.up * thrusterForce * powerUp.value;
+                playerRB.AddForce(thrustForce);
+            }
+
+            // Health
+            if (powerUp.type == PowerUp.Type.Health)
+            {
+                // INSERT HEALTH INCREASE
+            }
+
+
         }
     }
 
