@@ -49,8 +49,8 @@ public class PlayerBehaviour : MonoBehaviour
     private PowerUp powerUp;
 
     public enum GamePhase { Launch, Fly };
-    private GamePhase phase; 
-
+    private GamePhase phase;
+    
     void Start()
     {
         phase = GamePhase.Launch;
@@ -79,6 +79,10 @@ public class PlayerBehaviour : MonoBehaviour
             playerRB.useGravity = false;
             grounded = false;
             launchTimer = 5;
+
+            fuel = Mathf.Min(100, fuel + 40);
+
+            playerRB.drag = 0;
 
             playerRB.transform.position += new Vector3(0, 4, 0);
             playerRB.angularVelocity = Vector3.zero;
@@ -245,6 +249,7 @@ public class PlayerBehaviour : MonoBehaviour
         if (collision.collider.CompareTag("Ground"))
         {
             grounded = true;
+            playerRB.drag = 0.0005f;
         }
     }
 
