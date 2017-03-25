@@ -15,6 +15,8 @@ public class UI_Script : MonoBehaviour {
     public Image healthBar;
     public Text healthText;
 
+    public GameObject hostPlayer;
+
     private float countdownTextTimer;
 
     private const float maxHealthOffset = -318;
@@ -22,6 +24,13 @@ public class UI_Script : MonoBehaviour {
     void Start()
     {
         countdownTextTimer = 1;
+
+        fuelArrow = GameObject.Find("FM Arrow").GetComponent<RectTransform>();
+        fuelLimitArrow = GameObject.Find("FM Launch Limit").GetComponent<RectTransform>();
+        countdownText =  GameObject.Find("Countdown").GetComponent<Text>();
+        ammoCount = GameObject.Find("Ammo Count").GetComponent<Text>();
+        healthBar = GameObject.Find("Health Bar Bar").GetComponent<Image>();
+        healthText = GameObject.Find("Health Bar Text").GetComponent<Text>();
     }
 
     void Update()

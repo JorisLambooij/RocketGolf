@@ -13,9 +13,51 @@ public class CameraBehaviour : MonoBehaviour
     public bool invertX, invertY;
     //float distance, fov;
     float anglePitch = 0, angleYaw = 0; // Pitch = Up-Down; Yaw = Left/Right
-    
+
+    private int errorMessages;
+
+    //private bool foundPlayerGO;
+
+    void Start()
+    {
+        errorMessages = 0;
+        /*
+        foundPlayerGO = false;
+
+        GameObject playerGO = GameObject.Find("PlayerRocket");
+        if (playerGO != null)
+        {
+            playerTransform = playerGO.transform;
+            foundPlayerGO = true;
+        }
+        */
+    }
+
+    private bool SearchForPlayerGO()
+    {
+        GameObject playerGO = GameObject.Find("PlayerRocket(Clone)");
+        if (playerGO != null)
+        {
+            playerTransform = playerGO.transform;
+            return true;
+        }
+        return false;
+    }
+
 	void Update ()
     {
+        // Stop if player is not yet found
+        if (playerTransform == null)
+        {
+            if (errorMessages < 5)
+            {
+                errorMessages++;
+                return;
+            }
+            Debug.LogError("CameraBehaviourScript: PlayerTransform not found");
+            return;
+        }
+        
         Vector2 mouseMovement = new Vector2 (Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
 
         float invX = -1, invY = -1;

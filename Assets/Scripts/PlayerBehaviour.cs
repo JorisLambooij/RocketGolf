@@ -1,9 +1,20 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
-public class PlayerBehaviour : MonoBehaviour
+public class PlayerBehaviour : NetworkBehaviour
 {
+    public int playerNo;
+    public int pNo;
+
+    [SyncVar]
+    public bool ready = false;
+    [SyncVar]
+    public bool goLaunch = false;
+    [SyncVar]
+    public string GOname = "PlayerRocket";
+
     public Rigidbody playerRB;
     public Transform goal;
     public ProjectileManager pManager;
@@ -48,12 +59,15 @@ public class PlayerBehaviour : MonoBehaviour
 
     private PowerUp powerUp;
 
-    public enum GamePhase { Launch, Fly };
+    public PlayerBehaviour hostScript;
+
+    public enum GamePhase { Wait, Launch, Fly };
     private GamePhase phase;
-    
+
     void Start()
     {
-        phase = GamePhase.Launch;
+        this.gameObject.name = this.GOname;
+        phase = GamePhase.Wait;
         fuelTimer = 0.2f;
         fuelTimerIncreasing = true;
         launchTimer = 5;
@@ -63,38 +77,57 @@ public class PlayerBehaviour : MonoBehaviour
         ammo -= magazineSize;
         reloading = false;
         health = maxHealth;
-    }
 
+
+        goal = GameObject.Find("Goal").transform;
+        pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
+        cam = GameObject.Find("Camera").GetComponent<CameraBehaviour>();
+
+        if (isLocalPlayer)
+            cam.playerTransform = this.transform;
+
+        pNo = 2;
+        if (isServer && isLocalPlayer)
+        {
+            pNo = 1;
+            this.gameObject.name = "Player Host";
+            this.GOname = "Player Host";
+        }
+        else
+        {
+            hostScript = GameObject.Find("Player Host").GetComponent<PlayerBehaviour>();
+            // Register this client in the host's list
+            hostScript.gameObject.GetComponent<ServerScript>().clientGOs.Add(this.gameObject);
+        }
+
+        playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
+        playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
+
+    }
+    
 	void Update ()
     {
+        // process only the local player, ignore other players
+        if (!isLocalPlayer)
+            return;
+
         switch (phase)
         {
             case GamePhase.Launch: Phase_Launch(); break;
             case GamePhase.Fly: Phase_Fly(); break;
+            case GamePhase.Wait: Phase_Wait(); break;
         }
+    }
 
-        if (grounded && playerRB.velocity.magnitude < 0.35)
-        {
-            phase = GamePhase.Launch;
-            playerRB.useGravity = false;
-            grounded = false;
-            launchTimer = 5;
+    private void Phase_Wait()
+    {
+        playerRB.velocity = Vector3.zero;
+        playerRB.angularVelocity = Vector3.zero;
 
-            fuel = Mathf.Min(100, fuel + 40);
+        ready = true;
 
-            playerRB.drag = 0;
-
-            playerRB.transform.position += new Vector3(0, 4, 0);
-            playerRB.angularVelocity = Vector3.zero;
-
-            Vector3 goalDir = goal.transform.position - playerRB.transform.position;
-
-            float angle = Vector3.Angle(goalDir, Vector3.forward);
-            if (goalDir.x < 0)
-                angle *= -1;
-
-            playerRB.transform.rotation = Quaternion.Euler(new Vector3(0,-90 + angle,-90));
-        }
+        if (goLaunch || hostScript.goLaunch)
+            SwitchToLaunch();
     }
 
     private void Phase_Launch()
@@ -139,6 +172,8 @@ public class PlayerBehaviour : MonoBehaviour
             phase = GamePhase.Fly;
 
             countdown = 0;
+            
+            ready = false;
         }
         playerRB.velocity = Vector3.zero;
         RotationControls();
@@ -180,13 +215,48 @@ public class PlayerBehaviour : MonoBehaviour
         // Disable controls (except for thrust) after collision
         if (!grounded)
             RotationControls();
+        // After collision, wait until the rocket stops moving, then switch to Launch Phase
+        else if(playerRB.velocity.magnitude < 0.30f)
+        {
+            phase = GamePhase.Wait;
+
+            // Clients set their status to "ready", so the host can check them
+            if(!isServer)
+                ready = true;
+        }
+    }
+
+    private void SwitchToLaunch()
+    {
+        phase = GamePhase.Launch;
+        playerRB.useGravity = false;
+        grounded = false;
+        launchTimer = 5;
+
+        ready = false;
+        goLaunch = false;
+
+        fuel = Mathf.Min(100, fuel + 40);
+
+        playerRB.drag = 0;
+
+        playerRB.transform.position += new Vector3(0, 4, 0);
+        playerRB.angularVelocity = Vector3.zero;
+
+        Vector3 goalDir = goal.transform.position - playerRB.transform.position;
+
+        float goalAngle = Vector3.Angle(goalDir, Vector3.forward);
+        if (goalDir.x < 0)
+            goalAngle *= -1;
+
+        playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90 + goalAngle, -60));
     }
 
     // Shooting etc.
     void Combat()
     {
         shotTimer -= Time.deltaTime;
-        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetMouseButton(0))
+        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P" + playerNo + "Fire1") > 0)
         {
             // Shoot
             //Debug.DrawRay(this.transform.position, cam.CameraDirection * 4, Color.red);
@@ -194,10 +264,10 @@ public class PlayerBehaviour : MonoBehaviour
             
             pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
-            shotTimer = 1 / ShotFrequency;
+            shotTimer = 1 / ShotFrequency / Input.GetAxis("P" + playerNo + "Fire1");
         }
 
-        if (!reloading && ammo > 0 && (magazine == 0 || Input.GetKeyDown(KeyCode.R)))
+        if (!reloading && ammo > 0 && (magazine == 0 || Input.GetAxis("P" + playerNo + "Reload") != 0))
         {
             // Reload
             reloadTimer = reloadTime;
@@ -230,15 +300,15 @@ public class PlayerBehaviour : MonoBehaviour
     void RotationControls()
     {
         // Torque for A and D keys
-        Vector3 torque1 = -playerRB.transform.right * Input.GetAxis("Horizontal") * steeringForce;
+        Vector3 torque1 = -playerRB.transform.right * Input.GetAxis("P" + playerNo + "Horizontal") * steeringForce;
         if (invertX)
             torque1 *= -1;
         // Torque for W and S keys
-        Vector3 torque2 = -playerRB.transform.forward * Input.GetAxis("Vertical") * steeringForce;
+        Vector3 torque2 = -playerRB.transform.forward * Input.GetAxis("P" + playerNo + "Vertical") * steeringForce;
         if (invertY)
             torque2 *= -1;
         // Torque for Q and E keys
-        Vector3 torque3 = -playerRB.transform.up * Input.GetAxis("Roll") * steeringForce * 0.8f;
+        Vector3 torque3 = -playerRB.transform.up * Input.GetAxis("P" + playerNo + "Roll") * steeringForce * 0.8f;
 
         // The sum of all inputs
         playerRB.AddTorque(torque1 + torque2 + torque3);
@@ -260,7 +330,7 @@ public class PlayerBehaviour : MonoBehaviour
         // Check for Power-Ups here
         if (collider.CompareTag("Finish"))
         {
-            Debug.Log("YOU WIN!");
+            //Debug.Log("YOU WIN!");
             UnityEngine.SceneManagement.SceneManager.LoadScene("Game");
         }
 
@@ -268,7 +338,7 @@ public class PlayerBehaviour : MonoBehaviour
         {
             // Remove power up object
             Destroy(collider.gameObject);
-            Debug.Log("POWER UP");
+            //Debug.Log("POWER UP");
             powerUp = collider.GetComponent<PowerUp>();
 
             // Fuel
@@ -326,4 +396,9 @@ public class PlayerBehaviour : MonoBehaviour
     {
         get { return fuelAfter; }
      }
+
+    public bool ReadyForLaunch
+    {
+        get { return ready; }
+    }
 }
