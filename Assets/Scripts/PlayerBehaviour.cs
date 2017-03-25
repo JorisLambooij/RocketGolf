@@ -24,9 +24,19 @@ public class PlayerBehaviour : MonoBehaviour
     public float fuel;
     public float fuel_consumption;
 
+    public float maxHealth;
+
+    public int ammo;
+    public int magazineSize;
     public float ShotFrequency;
     public float DamagePerShot;
+    public float reloadTime;
 
+    private float health;
+
+    private int magazine;
+    private float reloadTimer;
+    private bool reloading;
     private bool grounded;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
@@ -47,6 +57,10 @@ public class PlayerBehaviour : MonoBehaviour
         launchTimer = 5;
         countdown = 5;
         shotTimer = 0;
+        magazine = magazineSize;
+        ammo -= magazineSize;
+        reloading = false;
+        health = maxHealth;
     }
 
 	void Update ()
@@ -166,16 +180,44 @@ public class PlayerBehaviour : MonoBehaviour
     void Combat()
     {
         shotTimer -= Time.deltaTime;
-        if (shotTimer <= 0 && Input.GetMouseButton(0))
+        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetMouseButton(0))
         {
             // Shoot
             //Debug.DrawRay(this.transform.position, cam.CameraDirection * 4, Color.red);
             //Debug.Break();
-
+            
             pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
-
+            magazine--;
             shotTimer = 1 / ShotFrequency;
         }
+
+        if (!reloading && ammo > 0 && (magazine == 0 || Input.GetKeyDown(KeyCode.R)))
+        {
+            // Reload
+            reloadTimer = reloadTime;
+            reloading = true;
+        }
+        if (reloading)
+        {
+            reloadTimer -= Time.deltaTime;
+            if (reloadTimer <= 0)
+            {
+                reloading = false;
+                int maxReload = Mathf.Min(ammo, magazineSize);
+                int reloaded = Mathf.Min(maxReload, magazineSize - magazine);
+                magazine += reloaded;
+                ammo -= reloaded;
+            }
+        }
+        if (Input.GetKeyDown(KeyCode.J))
+        {
+            health += DamagePerShot;
+        }
+        if (Input.GetKeyDown(KeyCode.H))
+        {
+            health -= DamagePerShot;
+        }
+        health = Mathf.Clamp(health, 0, maxHealth);
     }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)
@@ -217,6 +259,16 @@ public class PlayerBehaviour : MonoBehaviour
     public float FuelTimer
     {
         get { return fuelTimer; }
+    }
+
+    public int Magazine
+    {
+        get { return magazine; }
+    }
+
+    public float CurrHealth
+    {
+        get { return health; }
     }
 
     public GamePhase CurrentPhase

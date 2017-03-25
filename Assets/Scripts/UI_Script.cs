@@ -10,8 +10,14 @@ public class UI_Script : MonoBehaviour {
     public RectTransform fuelLimitArrow;
 
     public Text countdownText;
+    public Text ammoCount;
+
+    public Image healthBar;
+    public Text healthText;
 
     private float countdownTextTimer;
+
+    private const float maxHealthOffset = -318;
 
     void Start()
     {
@@ -36,6 +42,20 @@ public class UI_Script : MonoBehaviour {
         {
             countdownText.text = "";
         }
+
+        ammoCount.text = "Ammo:\n" + playerScript.Magazine + "/" + playerScript.magazineSize + "\n" + playerScript.ammo;
+
+        float healthPercentage = playerScript.CurrHealth / playerScript.maxHealth;
+        
+        Vector3 healthPos = healthBar.rectTransform.position;
+        float xPos = (1 - healthPercentage) * maxHealthOffset;
+        healthBar.rectTransform.position = new Vector3(xPos, healthPos.y, healthPos.z);
+        
+        healthText.text =  Mathf.Max ((int)(healthPercentage * 100), 0) + "%";
+
+        Color c = new Color((1 - healthPercentage), healthPercentage, 0);
+        healthBar.color = c;
+        healthText.color = c;
     }
 
     private void FuelMeter()
