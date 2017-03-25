@@ -36,4 +36,10 @@ public class PowerUp : MonoBehaviour
         }
 
     }
+    void Update()
+    {
+        this.transform.RotateAround(this.transform.position, this.transform.up, 1);
+        this.transform.RotateAround(this.transform.position, this.transform.right, 1);
+        this.transform.RotateAround(this.transform.position, this.transform.up, 1);
+    }
 }
