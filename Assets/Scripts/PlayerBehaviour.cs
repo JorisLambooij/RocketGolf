@@ -108,6 +108,7 @@ public class PlayerBehaviour : MonoBehaviour
         playerRB.velocity = Vector3.zero;
         RotationControls();
         PrepareCountdown();
+        playerRB.freezeRotation = false;
 
         if (Input.GetKey(KeyCode.F) || prepareTimer <= 0)
         {
