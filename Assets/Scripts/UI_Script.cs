@@ -27,7 +27,7 @@ public class UI_Script : MonoBehaviour {
     void Update()
     {
         FuelMeter();
-
+        
         if (playerScript.Countdown != 0)
         {
             countdownText.text = "" + playerScript.Countdown;

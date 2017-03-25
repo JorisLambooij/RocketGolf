@@ -34,10 +34,13 @@ public class PlayerBehaviour : MonoBehaviour
 
     private float health;
 
+    private float prepareTimer;
+
     private int magazine;
     private float reloadTimer;
     private bool reloading;
     private bool grounded;
+    private bool launchPressed;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
     private float launchTimer;
@@ -48,14 +51,15 @@ public class PlayerBehaviour : MonoBehaviour
 
     private PowerUp powerUp;
 
-    public enum GamePhase { Launch, Fly };
+    public enum GamePhase { Prepare, Launch, Fly };
     private GamePhase phase;
     
     void Start()
     {
-        phase = GamePhase.Launch;
+        phase = GamePhase.Prepare;
         fuelTimer = 0.2f;
         fuelTimerIncreasing = true;
+        prepareTimer = 30;
         launchTimer = 5;
         countdown = 5;
         shotTimer = 0;
@@ -69,15 +73,18 @@ public class PlayerBehaviour : MonoBehaviour
     {
         switch (phase)
         {
+            case GamePhase.Prepare: Phase_Prepare(); break;
             case GamePhase.Launch: Phase_Launch(); break;
             case GamePhase.Fly: Phase_Fly(); break;
         }
 
         if (grounded && playerRB.velocity.magnitude < 0.35)
         {
-            phase = GamePhase.Launch;
+            phase = GamePhase.Prepare;
             playerRB.useGravity = false;
             grounded = false;
+            prepareTimer = 30;
+            launchPressed = false;
             launchTimer = 5;
 
             fuel = Mathf.Min(100, fuel + 40);
@@ -96,36 +103,56 @@ public class PlayerBehaviour : MonoBehaviour
             playerRB.transform.rotation = Quaternion.Euler(new Vector3(0,-90 + angle,-90));
         }
     }
+    private void Phase_Prepare()
+    {
+        playerRB.velocity = Vector3.zero;
+        RotationControls();
+        PrepareCountdown();
+
+        if (Input.GetKey(KeyCode.F) || prepareTimer <= 0)
+        {
+            phase = GamePhase.Launch;
+        }
+    }
 
     private void Phase_Launch()
     {
         Combat();
         LaunchCountdown();
 
-        // The timer to swing the arrow back and forth
-        // to determine the amount of fuel used for launch
-        if (fuelTimerIncreasing)
-            fuelTimer += Time.deltaTime;
-        else
-            fuelTimer -= Time.deltaTime;
-
-        if (fuelTimer >= 1)
-            fuelTimerIncreasing = false;
-        else if (fuelTimer <= 0)
-            fuelTimerIncreasing = true;
-        
-        // The fuel that will be left in the tank with the current timing
-        fuelAfter = fuel - (fuelTimer) * maxLaunchFuel;
-        
-        // When there is less fuel left than the player could potentially use, adjust the timer mechanic
-        if(fuel - maxLaunchFuel < 0)
+        if (Input.GetKey(KeyCode.Space))
         {
-            // Timer goes between "0" and "fuel" instead of "fuel - maxLaunchFuel" and "fuel"
-            // (In practice this means the arrow will swing slower)
-            fuelAfter = (1 - fuelTimer) * fuel;
+            launchPressed = true;
+        }
+        
+        if (!launchPressed)
+        {
+            // The timer to swing the arrow back and forth
+            // to determine the amount of fuel used for launch
+            if (fuelTimerIncreasing)
+                fuelTimer += Time.deltaTime;
+            else
+                fuelTimer -= Time.deltaTime;
+
+            if (fuelTimer >= 1)
+                fuelTimerIncreasing = false;
+            else if (fuelTimer <= 0)
+                fuelTimerIncreasing = true;
+
+            // The fuel that will be left in the tank with the current timing
+            fuelAfter = fuel - (fuelTimer) * maxLaunchFuel;
+
+            // When there is less fuel left than the player could potentially use, adjust the timer mechanic
+            if (fuel - maxLaunchFuel < 0)
+            {
+                // Timer goes between "0" and "fuel" instead of "fuel - maxLaunchFuel" and "fuel"
+                // (In practice this means the arrow will swing slower)
+                fuelAfter = (1 - fuelTimer) * fuel;
+            }
         }
 
-        if (Input.GetKey(KeyCode.Space) || launchTimer <= 0)
+
+        if (launchTimer <= 0)
         {
             // Adjust the force according to the amount of fuel consumed
             // Add a little bit to the fuel consumed to boost very weak launches (prevents "zero-force"-launches)
@@ -141,7 +168,11 @@ public class PlayerBehaviour : MonoBehaviour
             countdown = 0;
         }
         playerRB.velocity = Vector3.zero;
-        RotationControls();
+    }
+
+    private void PrepareCountdown()
+    {
+        prepareTimer -= Time.deltaTime;
     }
 
     private void LaunchCountdown()
