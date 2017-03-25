@@ -24,7 +24,7 @@ public class UI_Script : MonoBehaviour {
     void Start()
     {
         countdownTextTimer = 1;
-
+        playerScript = GameObject.Find("PlayerRocket (Local)").GetComponent<PlayerBehaviour>();
         fuelArrow = GameObject.Find("FM Arrow").GetComponent<RectTransform>();
         fuelLimitArrow = GameObject.Find("FM Launch Limit").GetComponent<RectTransform>();
         countdownText =  GameObject.Find("Countdown").GetComponent<Text>();
@@ -78,7 +78,7 @@ public class UI_Script : MonoBehaviour {
             float maxFuelArrowAngle = -playerScript.FuelAfter / 100 * 360;
             fuelLimitArrow.rotation = Quaternion.Euler(0, 0, maxFuelArrowAngle);
         }
-        else if (playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Launch)
+        else if (playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Launch || playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Prepare)
         {
             float fuelArrowAngle = -(playerScript.FuelAfter) / 100 * 360;
             fuelArrow.rotation = Quaternion.Euler(0, 0, fuelArrowAngle);

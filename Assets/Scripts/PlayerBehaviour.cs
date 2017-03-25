@@ -7,13 +7,13 @@ public class PlayerBehaviour : NetworkBehaviour
 {
     public int playerNo;
     public int pNo;
-
+    public bool registeredClient;
     [SyncVar]
     public bool ready = false;
-    [SyncVar]
-    public bool goLaunch = false;
-    [SyncVar]
-    public string GOname = "PlayerRocket";
+    //[SyncVar]
+    //public bool goLaunch = false;
+    //[SyncVar]
+    //public string GOname = "PlayerRocket";
 
     public Rigidbody playerRB;
     public Transform goal;
@@ -61,24 +61,18 @@ public class PlayerBehaviour : NetworkBehaviour
     private float shotTimer;
 
     private PowerUp powerUp;
-
-<<<<<<< HEAD
+    
     public PlayerBehaviour hostScript;
-
-    public enum GamePhase { Wait, Launch, Fly };
-=======
-    public enum GamePhase { Prepare, Launch, Fly };
->>>>>>> 40783b4bd2c2804b50c0f98b9f06b1253453a7cc
+    
+    public enum GamePhase { Wait, Prepare, Launch, Fly };
     private GamePhase phase;
 
     void Start()
     {
-<<<<<<< HEAD
-        this.gameObject.name = this.GOname;
+        //this.gameObject.name = this.GOname;
         phase = GamePhase.Wait;
-=======
         phase = GamePhase.Prepare;
->>>>>>> 40783b4bd2c2804b50c0f98b9f06b1253453a7cc
+
         fuelTimer = 0.2f;
         fuelTimerIncreasing = true;
         prepareTimer = 30;
@@ -89,29 +83,25 @@ public class PlayerBehaviour : NetworkBehaviour
         ammo -= magazineSize;
         reloading = false;
         health = maxHealth;
-
+        //goLaunch = false;
+        ready = false;
 
         goal = GameObject.Find("Goal").transform;
         pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
         cam = GameObject.Find("Camera").GetComponent<CameraBehaviour>();
 
+        registeredClient = false;
         if (isLocalPlayer)
+        {
             cam.playerTransform = this.transform;
 
-        pNo = 2;
-        if (isServer && isLocalPlayer)
-        {
-            pNo = 1;
-            this.gameObject.name = "Player Host";
-            this.GOname = "Player Host";
-        }
-        else
-        {
-            hostScript = GameObject.Find("Player Host").GetComponent<PlayerBehaviour>();
             // Register this client in the host's list
-            hostScript.gameObject.GetComponent<ServerScript>().clientGOs.Add(this.gameObject);
+            pNo = GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().RegisterRocket();
+            if (pNo != 0)
+                registeredClient = true;
+            this.gameObject.name = "PlayerRocket (Local)";
         }
-
+        
         playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
         playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
 
@@ -119,9 +109,26 @@ public class PlayerBehaviour : NetworkBehaviour
     
 	void Update ()
     {
+        currPhase = phase;
+
         // process only the local player, ignore other players
         if (!isLocalPlayer)
             return;
+        
+        if(!registeredClient)
+        {
+            pNo = GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().RegisterRocket();
+            if (pNo != 0)
+            {
+                registeredClient = true;
+                playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
+                playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
+            }
+            return;
+        }
+
+        if (GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().switchNow)
+            SwitchPhase();
 
         switch (phase)
         {
@@ -132,47 +139,58 @@ public class PlayerBehaviour : NetworkBehaviour
         }
     }
 
-<<<<<<< HEAD
     private void Phase_Wait()
     {
         playerRB.velocity = Vector3.zero;
         playerRB.angularVelocity = Vector3.zero;
-=======
-        if (grounded && playerRB.velocity.magnitude < 0.35)
-        {
-            phase = GamePhase.Prepare;
-            playerRB.useGravity = false;
-            grounded = false;
-            prepareTimer = 30;
-            launchPressed = false;
-            launchTimer = 5;
 
-            fuel = Mathf.Min(100, fuel + 40);
+        PutReady();
+        
 
-            playerRB.drag = 0;
-
-            playerRB.transform.position += new Vector3(0, 4, 0);
-            playerRB.angularVelocity = Vector3.zero;
-
-            Vector3 goalDir = goal.transform.position - playerRB.transform.position;
->>>>>>> 40783b4bd2c2804b50c0f98b9f06b1253453a7cc
-
-        ready = true;
-
-        if (goLaunch || hostScript.goLaunch)
-            SwitchToLaunch();
+        //if(ServerScript.hostReady)  
+        //if ((hostScript != null && hostScript.goLaunch) || goLaunch)
+        //SwitchToPreparePhase();
+        
     }
+
+    public void SwitchPhase()
+    {
+        // This object will now switch phase, so tell the Network Manager
+        PutNotReady();
+        GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersSwitched[pNo - 1] = true;
+
+        switch (phase)
+        {
+            case GamePhase.Wait:
+                SwitchToPreparePhase();
+                playerRB.angularDrag = 3;
+                break;
+            case GamePhase.Fly:
+                phase = GamePhase.Wait;
+                break;
+            case GamePhase.Prepare:
+                phase = GamePhase.Launch;
+                playerRB.angularDrag = 4;
+                launchTimer = 5;
+                break;
+            case GamePhase.Launch:
+                phase = GamePhase.Fly;
+                break;
+        }
+    }
+
     private void Phase_Prepare()
     {
         playerRB.velocity = Vector3.zero;
         RotationControls();
-        PrepareCountdown();
-        playerRB.freezeRotation = false;
-
+        //PrepareCountdown();
+        
         if (Input.GetKey(KeyCode.F) || prepareTimer <= 0)
         {
-            phase = GamePhase.Launch;
+            //phase = GamePhase.Launch;
+            PutReady();
         }
+        
     }
 
     private void Phase_Launch()
@@ -223,13 +241,30 @@ public class PlayerBehaviour : NetworkBehaviour
             fuel = fuelAfter;
 
             playerRB.useGravity = true;
-            phase = GamePhase.Fly;
+
+            PutReady();
 
             countdown = 0;
-            
-            ready = false;
+            launchPressed = false;
         }
         playerRB.velocity = Vector3.zero;
+    }
+
+    private void PutReady()
+    {
+        if (!ready)
+        {
+            ready = true;
+            GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersReady[pNo - 1] = true;
+        }
+    }
+    private void PutNotReady()
+    {
+        if (ready)
+        {
+            ready = false;
+            GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersReady[pNo - 1] = false;
+        }
     }
 
     private void PrepareCountdown()
@@ -273,28 +308,25 @@ public class PlayerBehaviour : NetworkBehaviour
         // Disable controls (except for thrust) after collision
         if (!grounded)
             RotationControls();
-        // After collision, wait until the rocket stops moving, then switch to Launch Phase
+        // After collision, wait until the rocket stops moving, then switch to Wait Phase
         else if(playerRB.velocity.magnitude < 0.30f)
         {
-            phase = GamePhase.Wait;
-
-            // Clients set their status to "ready", so the host can check them
-            if(!isServer)
-                ready = true;
+            SwitchPhase();
         }
     }
 
-    private void SwitchToLaunch()
+    private void SwitchToPreparePhase()
     {
-        phase = GamePhase.Launch;
+        phase = GamePhase.Prepare;
         playerRB.useGravity = false;
         grounded = false;
         launchTimer = 5;
+        prepareTimer = 30;
 
-        ready = false;
-        goLaunch = false;
+        PutNotReady();
 
         fuel = Mathf.Min(100, fuel + 40);
+        fuelAfter = fuel;
 
         playerRB.drag = 0;
 
@@ -378,12 +410,10 @@ public class PlayerBehaviour : NetworkBehaviour
         {
             grounded = true;
             playerRB.drag = 0.0005f;
-            playerRB.freezeRotation = true;
+            playerRB.angularDrag = 8;
         }
     }
-
-
-
+    
     void OnTriggerEnter(Collider collider)
     {
         // Check for Power-Ups here
@@ -426,6 +456,7 @@ public class PlayerBehaviour : NetworkBehaviour
         }
     }
 
+    #region Fields
     public float FuelTimer
     {
         get { return fuelTimer; }
@@ -455,9 +486,9 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         get { return fuelAfter; }
      }
+    
+    #endregion
 
-    public bool ReadyForLaunch
-    {
-        get { return ready; }
-    }
+    // Just to display the rocket's current phase in the Inspector Window
+    public GamePhase currPhase;
 }

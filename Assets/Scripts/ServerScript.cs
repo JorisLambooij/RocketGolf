@@ -5,42 +5,66 @@ using UnityEngine.Networking;
 
 public class ServerScript : NetworkBehaviour {
 
-    public List<GameObject> clientGOs;
 
-	// Use this for initialization
-	void Start ()
+    //public SyncList<GameObject> playerRockets;
+    public int noOfPlayers;
+    public SyncListBool playersReady;
+
+    [SyncVar]
+    public bool switchNow;
+
+    public SyncListBool playersSwitched;
+
+    public PlayerBehaviour.GamePhase globalPhase;
+    
+    void Awake()
     {
-        if (isServer && isLocalPlayer)
-        {
-            clientGOs = new List<GameObject>(8);
-            Debug.Log("Im the server!");
-            this.gameObject.name = "Player Host";
-        }
-        else
-            this.enabled = false;
-        //this.gameObject.SetActive(false);
+        //playerRockets = new List<GameObject>();
+        playersReady = new SyncListBool();
+        playersSwitched = new SyncListBool();
+
+        globalPhase = PlayerBehaviour.GamePhase.Prepare;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (!isServer || !isLocalPlayer)
+        if (!isServer || playersReady.Count < noOfPlayers)
             return;
-
+        
+        // Check if everyone is ready to continue
         bool allReady = true;
-
-        foreach (GameObject client in clientGOs)
+        foreach(bool ready in playersReady)
         {
-            if (!client.GetComponent<PlayerBehaviour>().ready)
+            if (!ready)
                 allReady = false;
         }
+        // All clients are ready, so lets execute
         if (allReady)
+            switchNow = true;
+
+        if(switchNow)
         {
-            Debug.Log("All Ready!");
-            foreach (GameObject client in clientGOs)
-                client.GetComponent<PlayerBehaviour>().goLaunch = true;
-            
-            this.gameObject.GetComponent<PlayerBehaviour>().goLaunch = true;
+            bool allSwitched = true;
+            foreach (bool switched in playersSwitched)
+            {
+                if (!switched)
+                    allSwitched = false;
+            }
+            // All clients successfully switched phase, so clear everything
+            if (allSwitched)
+            {
+                switchNow = false;
+                for (int i = 0; i < playersSwitched.Count; i++)
+                    playersSwitched[i] = false;
+            }
         }
+    }
+
+    
+    public int RegisterRocket()
+    {
+        playersReady.Add(false);
+        playersSwitched.Add(false);
+        return playersReady.Count;
     }
 }
