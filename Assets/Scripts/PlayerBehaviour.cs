@@ -53,6 +53,8 @@ public class PlayerBehaviour : NetworkBehaviour
     private bool grounded;
     private bool hasBomb;
     private bool hasShield;
+    private bool activeShield;
+    private float shieldTimer;
     private bool launchPressed;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
@@ -386,6 +388,15 @@ public class PlayerBehaviour : NetworkBehaviour
             health -= DamagePerShot;
         }
         health = Mathf.Clamp(health, 0, maxHealth);
+        
+        if (shieldTimer > 0)
+        {
+            shieldTimer -= Time.deltaTime;
+        }
+        else
+        {
+            activeShield = false;
+        }
     }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)
@@ -479,15 +490,18 @@ public class PlayerBehaviour : NetworkBehaviour
         if (hasBomb && Input.GetKey(KeyCode.F))
         {
             playerRB.AddExplosionForce(100, playerRB.position, 100);
+            hasBomb = false;
         }
 
     }
 
     void Shield()
     {
-        if (hasShield)
+        if (hasShield && Input.GetKey(KeyCode.F))
         {
-
+            activeShield = true;
+            shieldTimer = 8;
+            hasShield = false;
         }
 
     }
