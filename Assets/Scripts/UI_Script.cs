@@ -49,7 +49,7 @@ public class UI_Script : MonoBehaviour {
         }
         else
         {
-            countdownText.text = "";
+            countdownText.text = "+";
         }
 
         ammoCount.text = "Ammo:\n" + playerScript.Magazine + "/" + playerScript.magazineSize + "\n" + playerScript.ammo;
