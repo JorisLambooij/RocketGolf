@@ -8,7 +8,9 @@ public class PowerUp : MonoBehaviour
     {
         Fuel,
         Speed,
-        Health
+        Health,
+        Bomb,
+        Shield
     }
 
     public Type type;
@@ -33,6 +35,16 @@ public class PowerUp : MonoBehaviour
         {
             rend.material.SetColor("_SpecColor", Color.green);
             rend.material.color = Color.green;
+        }
+        if (type == Type.Bomb)
+        {
+            rend.material.SetColor("_SpecColor", Color.magenta);
+            rend.material.color = Color.magenta;
+        }
+        if (type == Type.Shield)
+        {
+            rend.material.SetColor("_SpecColor", Color.cyan);
+            rend.material.color = Color.cyan;
         }
 
     }
