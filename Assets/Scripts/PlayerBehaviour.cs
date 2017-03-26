@@ -51,6 +51,8 @@ public class PlayerBehaviour : NetworkBehaviour
     private float reloadTimer;
     private bool reloading;
     private bool grounded;
+    private bool hasBomb;
+    private bool hasShield;
     private bool launchPressed;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
@@ -453,7 +455,41 @@ public class PlayerBehaviour : NetworkBehaviour
                 // 15% health regained per Power-Up lvl
                 health += maxHealth * 15 * powerUp.value;
             }
+
+            // Bomb
+            if (powerUp.type == PowerUp.Type.Bomb)
+            {
+                // Player now has a Bomb
+                hasBomb = true;
+            }
+
+            // Shield
+            if (powerUp.type == PowerUp.Type.Shield)
+            {
+                // Player now has a Shield
+                hasShield = true;
+            }
+
         }
+
+    }
+
+    void Bomb()
+    {
+        if (hasBomb && Input.GetKey(KeyCode.F))
+        {
+            playerRB.AddExplosionForce(100, playerRB.position, 100);
+        }
+
+    }
+
+    void Shield()
+    {
+        if (hasShield)
+        {
+
+        }
+
     }
 
     #region Fields
