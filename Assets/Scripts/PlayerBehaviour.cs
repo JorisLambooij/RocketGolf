@@ -19,6 +19,7 @@ public class PlayerBehaviour : NetworkBehaviour
     public Transform goal;
     public ProjectileManager pManager;
     public CameraBehaviour cam;
+    public GameObject shield;
 
     public bool invertX;
     public bool invertY;
@@ -51,10 +52,10 @@ public class PlayerBehaviour : NetworkBehaviour
     private float reloadTimer;
     private bool reloading;
     private bool grounded;
-    private bool hasBomb;
-    private bool hasShield;
+
     private bool activeShield;
     private float shieldTimer;
+
     private bool launchPressed;
     private float fuelTimer = 0;
     private bool fuelTimerIncreasing;
@@ -63,9 +64,9 @@ public class PlayerBehaviour : NetworkBehaviour
     private float fuelAfter;
 
     private float shotTimer;
-
-    private PowerUp powerUp;
     
+    private PowerUp.Type itemSlot;
+
     public PlayerBehaviour hostScript;
     
     public enum GamePhase { Wait, Prepare, Launch, Fly };
@@ -89,6 +90,7 @@ public class PlayerBehaviour : NetworkBehaviour
         health = maxHealth;
         //goLaunch = false;
         ready = false;
+        itemSlot = PowerUp.Type.NULL;
 
         goal = GameObject.Find("Goal").transform;
         pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
@@ -189,7 +191,7 @@ public class PlayerBehaviour : NetworkBehaviour
         RotationControls();
         //PrepareCountdown();
         
-        if (Input.GetKey(KeyCode.F) || prepareTimer <= 0)
+        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Space) || prepareTimer <= 0)
         {
             //phase = GamePhase.Launch;
             PutReady();
@@ -202,7 +204,7 @@ public class PlayerBehaviour : NetworkBehaviour
         Combat();
         LaunchCountdown();
 
-        if (Input.GetKey(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
         }
@@ -388,15 +390,8 @@ public class PlayerBehaviour : NetworkBehaviour
             health -= DamagePerShot;
         }
         health = Mathf.Clamp(health, 0, maxHealth);
-        
-        if (shieldTimer > 0)
-        {
-            shieldTimer -= Time.deltaTime;
-        }
-        else
-        {
-            activeShield = false;
-        }
+
+        Shield();
     }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)
@@ -440,70 +435,67 @@ public class PlayerBehaviour : NetworkBehaviour
         {
             // Remove power up object
             Destroy(collider.gameObject);
-            //Debug.Log("POWER UP");
-            powerUp = collider.GetComponent<PowerUp>();
+            PowerUp powerUp = collider.GetComponent<PowerUp>();
 
-            // Fuel
-            if (powerUp.type == PowerUp.Type.Fuel)
+            switch (powerUp.type)
             {
-                // 15% fuel per Power-Up lvl
-                fuel += powerUp.value * 15;
-                fuel = Mathf.Min(fuel, 100);
+                case (PowerUp.Type.Fuel): 
+                    // 15% fuel per Power-Up lvl
+                    fuel += powerUp.value * 15;
+                    fuel = Mathf.Min(fuel, 100);
+                    break;
+                case (PowerUp.Type.Speed):
+                    // ThrusterForce equal to the force the player would get when thrusting for 1 sec (roughly) 
+                    // Multiplied with Power-Up lvl
+                    Vector3 thrustForce = playerRB.transform.up * thrusterForce * 60 * powerUp.value;
+                    playerRB.AddForce(thrustForce);
+                    break;
+                case (PowerUp.Type.Health):
+                    // 15% health regained per Power-Up lvl
+                    health += maxHealth * 15 * powerUp.value;
+                    break;
+                case (PowerUp.Type.Bomb):
+                    // Player now has a Bomb
+                    itemSlot = PowerUp.Type.Bomb;
+                    break;
+                case (PowerUp.Type.Shield):
+                    // Player now has a Shield
+                    itemSlot = PowerUp.Type.Shield;
+                    break;
             }
-
-            // Speed 
-            if (powerUp.type == PowerUp.Type.Speed)
-            {
-                // ThrusterForce equal to the force the player would get when thrusting for 1 sec (roughly) 
-                // Multiplied with Power-Up lvl
-                Vector3 thrustForce = playerRB.transform.up * thrusterForce * 60 * powerUp.value;
-                playerRB.AddForce(thrustForce);
-            }
-
-            // Health
-            if (powerUp.type == PowerUp.Type.Health)
-            {
-                // 15% health regained per Power-Up lvl
-                health += maxHealth * 15 * powerUp.value;
-            }
-
-            // Bomb
-            if (powerUp.type == PowerUp.Type.Bomb)
-            {
-                // Player now has a Bomb
-                hasBomb = true;
-            }
-
-            // Shield
-            if (powerUp.type == PowerUp.Type.Shield)
-            {
-                // Player now has a Shield
-                hasShield = true;
-            }
-
         }
-
     }
 
     void Bomb()
     {
-        if (hasBomb && Input.GetKey(KeyCode.F))
+        if (itemSlot == PowerUp.Type.Bomb && Input.GetKey(KeyCode.F))
         {
             playerRB.AddExplosionForce(100, playerRB.position, 100);
-            hasBomb = false;
+            itemSlot = PowerUp.Type.NULL;
         }
 
     }
 
     void Shield()
     {
-        if (hasShield && Input.GetKey(KeyCode.F))
+        if (shieldTimer > 0)
+        {
+            shieldTimer -= Time.deltaTime;
+        }
+        else
+        {
+            activeShield = false;
+            shield.SetActive(false);
+        }
+
+        // Activate Shield
+        if (itemSlot == PowerUp.Type.Shield && Input.GetKeyDown(KeyCode.F))
         {
             activeShield = true;
             shieldTimer = 8;
-            hasShield = false;
+            shield.SetActive(true);
+            itemSlot = PowerUp.Type.NULL;
         }
-
     }
 
     #region Fields
@@ -537,6 +529,11 @@ public class PlayerBehaviour : NetworkBehaviour
         get { return fuelAfter; }
      }
     
+    public PowerUp.Type EquippedItem
+    {
+        get { return itemSlot; }
+    }
+
     #endregion
 
     // Just to display the rocket's current phase in the Inspector Window

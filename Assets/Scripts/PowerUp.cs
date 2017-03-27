@@ -10,7 +10,8 @@ public class PowerUp : MonoBehaviour
         Speed,
         Health,
         Bomb,
-        Shield
+        Shield,
+        NULL
     }
 
     public Type type;
