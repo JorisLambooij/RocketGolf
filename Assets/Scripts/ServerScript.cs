@@ -18,6 +18,7 @@ public class ServerScript : NetworkBehaviour {
 
     public SyncListBool playersSwitched;
 
+    [SyncVar]
     public PlayerBehaviour.GamePhase globalPhase;
     
     void Awake()
@@ -31,12 +32,26 @@ public class ServerScript : NetworkBehaviour {
 
     void Update()
     {
-        if (!isHost)
+        if (!isHost || !isServer)
             return;
 
-        if (!isServer || playersReady.Count < noOfPlayers)
+        if (playersReady.Count < noOfPlayers)
+        {
+            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+            foreach (GameObject player in players)
+            {
+                if (!player.GetComponent<PlayerBehaviour>().registeredClient)
+                {
+                    player.GetComponent<PlayerBehaviour>().hostRocket = this.gameObject;
+                    player.GetComponent<PlayerBehaviour>().pNo = RegisterRocket();
+                    player.GetComponent<PlayerBehaviour>().registeredClient = true;
+                }
+            }
             return;
+        }
         
+        
+
         // Check if everyone is ready to continue
         bool allReady = true;
         foreach(bool ready in playersReady)
@@ -45,8 +60,18 @@ public class ServerScript : NetworkBehaviour {
                 allReady = false;
         }
         // All clients are ready, so lets execute
-        if (allReady)
+        if (allReady && !switchNow)
+        {
             switchNow = true;
+
+            switch (globalPhase)
+            {
+                case (PlayerBehaviour.GamePhase.Prepare): globalPhase = PlayerBehaviour.GamePhase.Launch; break;
+                case (PlayerBehaviour.GamePhase.Launch): globalPhase = PlayerBehaviour.GamePhase.Fly; break;
+                case (PlayerBehaviour.GamePhase.Fly): globalPhase = PlayerBehaviour.GamePhase.Wait; break;
+                case (PlayerBehaviour.GamePhase.Wait): globalPhase = PlayerBehaviour.GamePhase.Prepare; break;
+            }
+        }
 
         if(switchNow)
         {
@@ -69,8 +94,10 @@ public class ServerScript : NetworkBehaviour {
     
     public int RegisterRocket()
     {
-        CmdRegisterRocket();
-        return playersReady.Count + 1;
+        playersReady.Add(false);
+        playersSwitched.Add(false);
+        //CmdRegisterRocket();
+        return playersReady.Count;
     }
     [Command]
     private void CmdRegisterRocket()

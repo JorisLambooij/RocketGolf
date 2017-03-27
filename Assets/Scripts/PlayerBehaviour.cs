@@ -7,6 +7,7 @@ public class PlayerBehaviour : NetworkBehaviour
 {
     public int playerNo;
     public int pNo;
+    [SyncVar]
     public bool registeredClient;
     [SyncVar]
     public bool ready = false;
@@ -52,8 +53,7 @@ public class PlayerBehaviour : NetworkBehaviour
     private float reloadTimer;
     private bool reloading;
     private bool grounded;
-
-    private bool activeShield;
+    
     private float shieldTimer;
 
     private bool launchPressed;
@@ -128,6 +128,7 @@ public class PlayerBehaviour : NetworkBehaviour
         
         if(!registeredClient)
         {
+            /*
             GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
             foreach(GameObject go in players)
             {
@@ -141,11 +142,13 @@ public class PlayerBehaviour : NetworkBehaviour
                 registeredClient = true;
                 playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
                 playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
-            }
+            }*/
             return;
         }
 
-        if (hostRocket.GetComponent<ServerScript>().switchNow)
+
+        //if (hostRocket.GetComponent<ServerScript>().switchNow)
+        if(phase != hostRocket.GetComponent<ServerScript>().globalPhase && hostRocket.GetComponent<ServerScript>().switchNow)
             SwitchPhase();
 
         switch (phase)
@@ -176,7 +179,7 @@ public class PlayerBehaviour : NetworkBehaviour
         // This object will now switch phase, so tell the Network Manager
         PutNotReady();
         hostRocket.GetComponent<ServerScript>().playersSwitched[pNo - 1] = true;
-
+        
         switch (phase)
         {
             case GamePhase.Wait:
@@ -271,17 +274,28 @@ public class PlayerBehaviour : NetworkBehaviour
     
     private void PutReady()
     {
+        CmdPutReady();
+    }
+    [Command]
+    private void CmdPutReady()
+    {
         if (!ready)
         {
-            ready = true;
+            Debug.Log("RDY");
+            this.ready = true;
             hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = true;
         }
     }
-    
     private void PutNotReady()
+    {
+        CmdPutNotReady();
+    }
+    [Command]
+    private void CmdPutNotReady()
     {
         if (ready)
         {
+            Debug.Log("NOT RDY");
             ready = false;
             hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = false;
         }
@@ -343,7 +357,7 @@ public class PlayerBehaviour : NetworkBehaviour
         launchTimer = 5;
         prepareTimer = 30;
 
-        PutNotReady();
+        CmdPutNotReady();
 
         fuel = Mathf.Min(100, fuel + 40);
         fuelAfter = fuel;
@@ -498,14 +512,14 @@ public class PlayerBehaviour : NetworkBehaviour
         }
         else
         {
-            activeShield = false;
+            //activeShield = false;
             shield.SetActive(false);
         }
 
         // Activate Shield
         if (itemSlot == PowerUp.Type.Shield && Input.GetKeyDown(KeyCode.F))
         {
-            activeShield = true;
+            //activeShield = true;
             shieldTimer = 8;
             shield.SetActive(true);
             itemSlot = PowerUp.Type.NULL;
