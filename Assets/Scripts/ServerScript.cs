@@ -13,6 +13,9 @@ public class ServerScript : NetworkBehaviour {
     [SyncVar]
     public bool switchNow;
 
+    [SyncVar]
+    public bool isHost = false;
+
     public SyncListBool playersSwitched;
 
     public PlayerBehaviour.GamePhase globalPhase;
@@ -28,6 +31,9 @@ public class ServerScript : NetworkBehaviour {
 
     void Update()
     {
+        if (!isHost)
+            return;
+
         if (!isServer || playersReady.Count < noOfPlayers)
             return;
         
@@ -63,8 +69,13 @@ public class ServerScript : NetworkBehaviour {
     
     public int RegisterRocket()
     {
+        CmdRegisterRocket();
+        return playersReady.Count + 1;
+    }
+    [Command]
+    private void CmdRegisterRocket()
+    {
         playersReady.Add(false);
         playersSwitched.Add(false);
-        return playersReady.Count;
     }
 }

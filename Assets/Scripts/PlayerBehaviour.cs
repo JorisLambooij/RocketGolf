@@ -10,8 +10,8 @@ public class PlayerBehaviour : NetworkBehaviour
     public bool registeredClient;
     [SyncVar]
     public bool ready = false;
-    //[SyncVar]
-    //public bool goLaunch = false;
+    [SyncVar]
+    public GameObject hostRocket;
     //[SyncVar]
     //public string GOname = "PlayerRocket";
 
@@ -100,17 +100,22 @@ public class PlayerBehaviour : NetworkBehaviour
         if (isLocalPlayer)
         {
             cam.playerTransform = this.transform;
+            this.gameObject.name = "PlayerRocket (Local)";
 
-            // Register this client in the host's list
-            pNo = GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().RegisterRocket();
+            if (!isServer)
+                return;
+            hostRocket = this.gameObject;
+
+            // Register this rocket (The host must know himself too)
+            pNo = hostRocket.GetComponent<ServerScript>().RegisterRocket();
+            hostRocket.GetComponent<ServerScript>().isHost = true;
+
             if (pNo != 0)
                 registeredClient = true;
-            this.gameObject.name = "PlayerRocket (Local)";
-        }
-        
-        playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
-        playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
 
+            playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
+            playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
+        }
     }
     
 	void Update ()
@@ -123,7 +128,14 @@ public class PlayerBehaviour : NetworkBehaviour
         
         if(!registeredClient)
         {
-            pNo = GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().RegisterRocket();
+            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+            foreach(GameObject go in players)
+            {
+                if (go.GetComponent<ServerScript>().isHost)
+                    hostRocket = go;
+            }
+
+            pNo = hostRocket.GetComponent<ServerScript>().RegisterRocket();
             if (pNo != 0)
             {
                 registeredClient = true;
@@ -133,7 +145,7 @@ public class PlayerBehaviour : NetworkBehaviour
             return;
         }
 
-        if (GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().switchNow)
+        if (hostRocket.GetComponent<ServerScript>().switchNow)
             SwitchPhase();
 
         switch (phase)
@@ -163,7 +175,7 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         // This object will now switch phase, so tell the Network Manager
         PutNotReady();
-        GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersSwitched[pNo - 1] = true;
+        hostRocket.GetComponent<ServerScript>().playersSwitched[pNo - 1] = true;
 
         switch (phase)
         {
@@ -256,20 +268,22 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.velocity = Vector3.zero;
     }
 
+    
     private void PutReady()
     {
         if (!ready)
         {
             ready = true;
-            GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersReady[pNo - 1] = true;
+            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = true;
         }
     }
+    
     private void PutNotReady()
     {
         if (ready)
         {
             ready = false;
-            GameObject.Find("InGame Network Manager").GetComponent<ServerScript>().playersReady[pNo - 1] = false;
+            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = false;
         }
     }
 
