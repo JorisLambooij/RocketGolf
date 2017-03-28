@@ -25,6 +25,7 @@ public class PlayerBehaviour : NetworkBehaviour
     public bool invertX;
     public bool invertY;
 
+    #region Rocket's Stats
     public float maxVelocity;
 
     public float launchForce;
@@ -44,6 +45,7 @@ public class PlayerBehaviour : NetworkBehaviour
     public float ShotFrequency;
     public float DamagePerShot;
     public float reloadTime;
+    #endregion
 
     private float health;
 
@@ -125,7 +127,9 @@ public class PlayerBehaviour : NetworkBehaviour
         // process only the local player, ignore other players
         if (!isLocalPlayer)
             return;
-        
+
+        //Debug.Log(Input.GetAxis("P1Launch"));
+
         if(!registeredClient)
         {
             /*
@@ -205,8 +209,10 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.velocity = Vector3.zero;
         RotationControls();
         //PrepareCountdown();
-        
-        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Space) || prepareTimer <= 0)
+
+        // Press Joystick.A, Spacebar or wait for the timer 
+        //Input.GetAxis("P1Launch") == 1
+        if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space) || prepareTimer <= 0)
         {
             //phase = GamePhase.Launch;
             PutReady();
@@ -219,7 +225,7 @@ public class PlayerBehaviour : NetworkBehaviour
         Combat();
         LaunchCountdown();
 
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
         }
@@ -317,7 +323,7 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         Combat();
 
-        if (fuel > 0 && Input.GetKey(KeyCode.Space))
+        if (fuel > 0 && (Input.GetKey(KeyCode.Joystick1Button0) || Input.GetKey(KeyCode.Space)))
         {
             // Apply forward thrust
             Vector3 thrustForce = playerRB.transform.up * thrusterForce * Time.deltaTime * 100;
@@ -380,7 +386,7 @@ public class PlayerBehaviour : NetworkBehaviour
     void Combat()
     {
         shotTimer -= Time.deltaTime;
-        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P" + playerNo + "Fire1") > 0)
+        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P" + playerNo + "Fire") > 0)
         {
             // Shoot
             //Debug.DrawRay(this.transform.position, cam.CameraDirection * 4, Color.red);
@@ -388,10 +394,16 @@ public class PlayerBehaviour : NetworkBehaviour
             
             pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
-            shotTimer = 1 / ShotFrequency / Input.GetAxis("P" + playerNo + "Fire1");
+            shotTimer = 1 / ShotFrequency / Input.GetAxis("P" + playerNo + "Fire");
         }
 
-        if (!reloading && ammo > 0 && (magazine == 0 || Input.GetAxis("P" + playerNo + "Reload") != 0))
+
+        // Reload when the magazine is empty or when the button is pressed.
+        // But only if:
+        // - We are not already reloading
+        // - We have ammo left
+        // - Our Magazine is not full already
+        if ((magazine == 0 || Input.GetAxis("P" + playerNo + "Reload") != 0) && !reloading && ammo > 0 && magazine != magazineSize)
         {
             // Reload
             reloadTimer = reloadTime;
@@ -496,7 +508,7 @@ public class PlayerBehaviour : NetworkBehaviour
 
     void Bomb()
     {
-        if (itemSlot == PowerUp.Type.Bomb && Input.GetKey(KeyCode.F))
+        if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
         {
             playerRB.AddExplosionForce(100, playerRB.position, 100);
             itemSlot = PowerUp.Type.NULL;
@@ -517,7 +529,7 @@ public class PlayerBehaviour : NetworkBehaviour
         }
 
         // Activate Shield
-        if (itemSlot == PowerUp.Type.Shield && Input.GetKeyDown(KeyCode.F))
+        if (itemSlot == PowerUp.Type.Shield && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKeyDown(KeyCode.F)))
         {
             //activeShield = true;
             shieldTimer = 8;
