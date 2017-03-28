@@ -42,6 +42,9 @@ public class UI_Script : MonoBehaviour {
 
     void Update()
     {
+        if (!playerScript.isLocalPlayer)
+            return;
+
         FuelMeter();
         Countdown();
         Health_and_Ammo();

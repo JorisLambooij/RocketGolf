@@ -5,8 +5,16 @@ using UnityEngine.Networking;
 
 public class PlayerBehaviour : NetworkBehaviour
 {
-    public int playerNo;
+    [SyncVar (hook= "changePNo")]
     public int pNo;
+
+    private void changePNo(int newPno)
+    {
+        pNo = newPno;
+        playerRB.position = GameObject.Find("Launch Pad P" + newPno).transform.position + new Vector3(0, 4, 0);
+        playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
+    }
+
     [SyncVar]
     public bool registeredClient;
     [SyncVar]
@@ -125,34 +133,11 @@ public class PlayerBehaviour : NetworkBehaviour
         currPhase = phase;
 
         // process only the local player, ignore other players
-        if (!isLocalPlayer)
+        if (!isLocalPlayer || !registeredClient)
             return;
-
-        //Debug.Log(Input.GetAxis("P1Launch"));
-
-        if(!registeredClient)
-        {
-            /*
-            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-            foreach(GameObject go in players)
-            {
-                if (go.GetComponent<ServerScript>().isHost)
-                    hostRocket = go;
-            }
-
-            pNo = hostRocket.GetComponent<ServerScript>().RegisterRocket();
-            if (pNo != 0)
-            {
-                registeredClient = true;
-                playerRB.position = GameObject.Find("Launch Pad P" + pNo).transform.position + new Vector3(0, 4, 0);
-                playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
-            }*/
-            return;
-        }
-
 
         //if (hostRocket.GetComponent<ServerScript>().switchNow)
-        if(phase != hostRocket.GetComponent<ServerScript>().globalPhase && hostRocket.GetComponent<ServerScript>().switchNow)
+        if(phase != hostRocket.GetComponent<ServerScript>().globalPhase)// && hostRocket.GetComponent<ServerScript>().switchNow)
             SwitchPhase();
 
         switch (phase)
@@ -170,12 +155,6 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.angularVelocity = Vector3.zero;
 
         PutReady();
-        
-
-        //if(ServerScript.hostReady)  
-        //if ((hostScript != null && hostScript.goLaunch) || goLaunch)
-        //SwitchToPreparePhase();
-        
     }
 
     public void SwitchPhase()
@@ -202,6 +181,7 @@ public class PlayerBehaviour : NetworkBehaviour
                 phase = GamePhase.Fly;
                 break;
         }
+        //Debug.Log("Switching to phase: " + phase);
     }
 
     private void Phase_Prepare()
@@ -210,14 +190,11 @@ public class PlayerBehaviour : NetworkBehaviour
         RotationControls();
         //PrepareCountdown();
 
-        // Press Joystick.A, Spacebar or wait for the timer 
-        //Input.GetAxis("P1Launch") == 1
+        // Press Joystick.A, Spacebar or wait for the timer
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space) || prepareTimer <= 0)
         {
-            //phase = GamePhase.Launch;
             PutReady();
         }
-        
     }
 
     private void Phase_Launch()
@@ -275,36 +252,6 @@ public class PlayerBehaviour : NetworkBehaviour
             launchPressed = false;
         }
         playerRB.velocity = Vector3.zero;
-    }
-
-    
-    private void PutReady()
-    {
-        CmdPutReady();
-    }
-    [Command]
-    private void CmdPutReady()
-    {
-        if (!ready)
-        {
-            Debug.Log("RDY");
-            this.ready = true;
-            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = true;
-        }
-    }
-    private void PutNotReady()
-    {
-        CmdPutNotReady();
-    }
-    [Command]
-    private void CmdPutNotReady()
-    {
-        if (ready)
-        {
-            Debug.Log("NOT RDY");
-            ready = false;
-            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = false;
-        }
     }
 
     private void PrepareCountdown()
@@ -386,24 +333,19 @@ public class PlayerBehaviour : NetworkBehaviour
     void Combat()
     {
         shotTimer -= Time.deltaTime;
-        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P" + playerNo + "Fire") > 0)
+        if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P1Fire") > 0)
         {
-            // Shoot
-            //Debug.DrawRay(this.transform.position, cam.CameraDirection * 4, Color.red);
-            //Debug.Break();
-            
             pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
-            shotTimer = 1 / ShotFrequency / Input.GetAxis("P" + playerNo + "Fire");
+            shotTimer = 1 / ShotFrequency / Input.GetAxis("P1Fire");
         }
-
 
         // Reload when the magazine is empty or when the button is pressed.
         // But only if:
         // - We are not already reloading
         // - We have ammo left
         // - Our Magazine is not full already
-        if ((magazine == 0 || Input.GetAxis("P" + playerNo + "Reload") != 0) && !reloading && ammo > 0 && magazine != magazineSize)
+        if ((magazine == 0 || Input.GetAxis("P1Reload") != 0) && !reloading && ammo > 0 && magazine != magazineSize)
         {
             // Reload
             reloadTimer = reloadTime;
@@ -438,15 +380,15 @@ public class PlayerBehaviour : NetworkBehaviour
     void RotationControls()
     {
         // Torque for A and D keys
-        Vector3 torque1 = -playerRB.transform.right * Input.GetAxis("P" + playerNo + "Horizontal") * steeringForce;
+        Vector3 torque1 = -playerRB.transform.right * Input.GetAxis("P1Horizontal") * steeringForce;
         if (invertX)
             torque1 *= -1;
         // Torque for W and S keys
-        Vector3 torque2 = -playerRB.transform.forward * Input.GetAxis("P" + playerNo + "Vertical") * steeringForce;
+        Vector3 torque2 = -playerRB.transform.forward * Input.GetAxis("P1Vertical") * steeringForce;
         if (invertY)
             torque2 *= -1;
         // Torque for Q and E keys
-        Vector3 torque3 = -playerRB.transform.up * Input.GetAxis("P" + playerNo + "Roll") * steeringForce * 0.8f;
+        Vector3 torque3 = -playerRB.transform.up * Input.GetAxis("P1Roll") * steeringForce * 0.8f;
 
         // The sum of all inputs
         playerRB.AddTorque(torque1 + torque2 + torque3);
@@ -506,6 +448,7 @@ public class PlayerBehaviour : NetworkBehaviour
         }
     }
 
+    #region Use-Items
     void Bomb()
     {
         if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
@@ -537,6 +480,36 @@ public class PlayerBehaviour : NetworkBehaviour
             itemSlot = PowerUp.Type.NULL;
         }
     }
+    #endregion
+
+    #region Commands to sync phases
+    private void PutReady()
+    {
+        CmdPutReady();
+    }
+    [Command]
+    private void CmdPutReady()
+    {
+        if (!ready)
+        {
+            this.ready = true;
+            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = true;
+        }
+    }
+    private void PutNotReady()
+    {
+        CmdPutNotReady();
+    }
+    [Command]
+    private void CmdPutNotReady()
+    {
+        if (ready)
+        {
+            ready = false;
+            hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = false;
+        }
+    }
+    #endregion
 
     #region Fields
     public float FuelTimer

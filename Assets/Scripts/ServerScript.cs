@@ -10,8 +10,8 @@ public class ServerScript : NetworkBehaviour {
     public int noOfPlayers;
     public SyncListBool playersReady;
 
-    [SyncVar]
-    public bool switchNow;
+    //[SyncVar]
+    //public bool switchNow;
 
     [SyncVar]
     public bool isHost = false;
@@ -60,9 +60,9 @@ public class ServerScript : NetworkBehaviour {
                 allReady = false;
         }
         // All clients are ready, so lets execute
-        if (allReady && !switchNow)
+        if (allReady)// && !switchNow)
         {
-            switchNow = true;
+            //switchNow = true;
 
             switch (globalPhase)
             {
@@ -72,7 +72,7 @@ public class ServerScript : NetworkBehaviour {
                 case (PlayerBehaviour.GamePhase.Wait): globalPhase = PlayerBehaviour.GamePhase.Prepare; break;
             }
         }
-
+        /*
         if(switchNow)
         {
             bool allSwitched = true;
@@ -84,11 +84,12 @@ public class ServerScript : NetworkBehaviour {
             // All clients successfully switched phase, so clear everything
             if (allSwitched)
             {
+                Debug.Log("All clients successfully switched phase, so clear everything");
                 switchNow = false;
                 for (int i = 0; i < playersSwitched.Count; i++)
                     playersSwitched[i] = false;
             }
-        }
+        }*/
     }
 
     
