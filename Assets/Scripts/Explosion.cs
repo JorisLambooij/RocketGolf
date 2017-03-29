@@ -31,7 +31,6 @@ public class Explosion : MonoBehaviour {
                 if (rb != null && hit.GetComponentInParent<PlayerBehaviour>() != fromPlayer)
                 {
                     rb.AddExplosionForce(explosionForce, transform.position, explosionRadius);
-                    Debug.Log(hit.name);
                 }
             }
         }

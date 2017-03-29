@@ -28,6 +28,8 @@ public class ServerScript : NetworkBehaviour {
         playersSwitched = new SyncListBool();
 
         globalPhase = PlayerBehaviour.GamePhase.Prepare;
+
+        noOfPlayers = GameObject.Find("GameSettings").GetComponent<GameSettings>().numberOfPlayers;
     }
 
     void Update()
@@ -40,6 +42,7 @@ public class ServerScript : NetworkBehaviour {
             GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
             foreach (GameObject player in players)
             {
+                Debug.Log(player.name);
                 if (!player.GetComponent<PlayerBehaviour>().registeredClient)
                 {
                     player.GetComponent<PlayerBehaviour>().hostRocket = this.gameObject;
@@ -71,6 +74,7 @@ public class ServerScript : NetworkBehaviour {
                 case (PlayerBehaviour.GamePhase.Fly): globalPhase = PlayerBehaviour.GamePhase.Wait; break;
                 case (PlayerBehaviour.GamePhase.Wait): globalPhase = PlayerBehaviour.GamePhase.Prepare; break;
             }
+            Debug.Log("Switching to GLOBAL phase: " + globalPhase);
         }
         /*
         if(switchNow)
@@ -106,4 +110,5 @@ public class ServerScript : NetworkBehaviour {
         playersReady.Add(false);
         playersSwitched.Add(false);
     }
+    
 }

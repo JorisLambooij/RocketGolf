@@ -136,9 +136,8 @@ public class PlayerBehaviour : NetworkBehaviour
         // process only the local player, ignore other players
         if (!isLocalPlayer || !registeredClient)
             return;
-
-        //if (hostRocket.GetComponent<ServerScript>().switchNow)
-        if(phase != hostRocket.GetComponent<ServerScript>().globalPhase)// && hostRocket.GetComponent<ServerScript>().switchNow)
+        
+        if( (phase == GamePhase.Wait && hostRocket.GetComponent<ServerScript>().globalPhase == GamePhase.Prepare) || phase != hostRocket.GetComponent<ServerScript>().globalPhase)
             SwitchPhase();
 
         switch (phase)
@@ -163,7 +162,7 @@ public class PlayerBehaviour : NetworkBehaviour
         // This object will now switch phase, so tell the Network Manager
         PutNotReady();
         hostRocket.GetComponent<ServerScript>().playersSwitched[pNo - 1] = true;
-        
+
         switch (phase)
         {
             case GamePhase.Wait:
@@ -182,13 +181,17 @@ public class PlayerBehaviour : NetworkBehaviour
                 phase = GamePhase.Fly;
                 break;
         }
-        //Debug.Log("Switching to phase: " + phase);
+
+        Debug.Log("Switching to phase: " + phase);
     }
 
     private void Phase_Prepare()
     {
         playerRB.velocity = Vector3.zero;
-        RotationControls();
+
+        if(!ready)
+            RotationControls();
+        
         //PrepareCountdown();
 
         // Press Joystick.A, Spacebar or wait for the timer
@@ -299,7 +302,8 @@ public class PlayerBehaviour : NetworkBehaviour
         // After collision, wait until the rocket stops moving, then switch to Wait Phase
         else if(playerRB.velocity.magnitude < 0.30f)
         {
-            SwitchPhase();
+            PutReady();
+            //SwitchPhase();
         }
     }
 
@@ -320,6 +324,7 @@ public class PlayerBehaviour : NetworkBehaviour
 
         playerRB.transform.position += new Vector3(0, 4, 0);
         playerRB.angularVelocity = Vector3.zero;
+        playerRB.velocity = Vector3.zero;
 
         Vector3 goalDir = goal.transform.position - playerRB.transform.position;
 
