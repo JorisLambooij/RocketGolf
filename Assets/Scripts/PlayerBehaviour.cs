@@ -29,6 +29,7 @@ public class PlayerBehaviour : NetworkBehaviour
     public ProjectileManager pManager;
     public CameraBehaviour cam;
     public GameObject shield;
+    public GameObject explosionprefab;
 
     public bool invertX;
     public bool invertY;
@@ -373,6 +374,7 @@ public class PlayerBehaviour : NetworkBehaviour
         }
         health = Mathf.Clamp(health, 0, maxHealth);
 
+        Bomb();
         Shield();
     }
 
@@ -453,8 +455,10 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
         {
-            playerRB.AddExplosionForce(100, playerRB.position, 100);
             itemSlot = PowerUp.Type.NULL;
+            GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+            explosion.GetComponent<Explosion>().isActive = true;
+            explosion.GetComponent<Explosion>().fromPlayer = this;
         }
 
     }
