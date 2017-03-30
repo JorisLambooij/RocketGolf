@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.Audio;
 
 public class PlayerBehaviour : NetworkBehaviour
 {
@@ -21,8 +22,9 @@ public class PlayerBehaviour : NetworkBehaviour
     public bool ready = false;
     [SyncVar]
     public GameObject hostRocket;
-    //[SyncVar]
-    //public string GOname = "PlayerRocket";
+
+    [SyncVar]
+    public bool activeShield;
 
     public Rigidbody playerRB;
     public Transform goal;
@@ -33,6 +35,10 @@ public class PlayerBehaviour : NetworkBehaviour
 
     public bool invertX;
     public bool invertY;
+    
+    public AudioClip[] audioClip;
+
+    public AudioClip laserSound;
 
     #region Rocket's Stats
     public float maxVelocity;
@@ -77,6 +83,7 @@ public class PlayerBehaviour : NetworkBehaviour
     private float shotTimer;
     
     private PowerUp.Type itemSlot;
+    private bool gameOver;
 
     public PlayerBehaviour hostScript;
     
@@ -101,7 +108,12 @@ public class PlayerBehaviour : NetworkBehaviour
         health = maxHealth;
         //goLaunch = false;
         ready = false;
-        itemSlot = PowerUp.Type.NULL;
+
+        // TODO: Set to NULL
+        itemSlot = PowerUp.Type.Bomb;
+
+        activeShield = false;
+        gameOver = false;
 
         goal = GameObject.Find("Goal").transform;
         pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
@@ -128,10 +140,28 @@ public class PlayerBehaviour : NetworkBehaviour
             playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
         }
     }
-    
-	void Update ()
+    public void QuitGame()
+    {
+        Network.Disconnect();
+        UnityEngine.SceneManagement.SceneManager.LoadScene("Menu");
+        NetworkManagerHUD netHUD = GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>();
+        netHUD.showGUI = true;
+        NetworkManager netMan = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
+        if (isServer)
+            netMan.StopHost();
+        else
+            netMan.StopClient();
+    }
+
+    void Update ()
     {
         currPhase = phase;
+
+        // ESC = Quit the Game
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            QuitGame();
+        }
 
         // process only the local player, ignore other players
         if (!isLocalPlayer || !registeredClient)
@@ -155,6 +185,14 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.angularVelocity = Vector3.zero;
 
         PutReady();
+    }
+
+    public void PlaySound(int clip)
+    {
+        audioClip[clip] = GetComponent<AudioSource>().clip;
+        //audiosource.clip = audioClip[clip];
+        //audiosource.Play();
+       
     }
 
     public void SwitchPhase()
@@ -188,6 +226,9 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         playerRB.velocity = Vector3.zero;
 
+        // TODO: Remove
+        Combat();
+
         if(!ready)
             RotationControls();
         
@@ -202,13 +243,14 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         //Combat();
         LaunchCountdown();
-
+        
         if(!ready)
             playerRB.velocity = Vector3.zero;
 
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
+            PlaySound(1);
         }
         
         if (!launchPressed)
@@ -350,7 +392,14 @@ public class PlayerBehaviour : NetworkBehaviour
         shotTimer -= Time.deltaTime;
         if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P1Fire") > 0)
         {
-            pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+            Vector3 flyDir = (cam.CameraDirection + new Vector3(0, .2f, 0)).normalized;
+            CmdShoot(transform.position + flyDir * 10, flyDir * 150);
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[1];
+            audioPlayer.Play();
+
+            //pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
             shotTimer = 1 / ShotFrequency / Input.GetAxis("P1Fire");
         }
@@ -428,11 +477,16 @@ public class PlayerBehaviour : NetworkBehaviour
             grounded = true;
             playerRB.drag = 0.0005f;
             playerRB.angularDrag = 8;
-            
+        }
+        else if (collision.collider.CompareTag("Projectile"))
+        {
+            Destroy(collision.collider.gameObject);
+            if (!activeShield)
+                playerRB.AddExplosionForce(15, collision.collider.transform.position, 2);
         }
     }
-    
-    void OnTriggerEnter(Collider collider)
+
+        void OnTriggerEnter(Collider collider)
     {
         // Check for Power-Ups here
         if (collider.CompareTag("Finish"))
@@ -475,39 +529,72 @@ public class PlayerBehaviour : NetworkBehaviour
         }
     }
 
+    // Redirect the "Shooting command" to the projectile manager on the server
+    [Command]
+    private void CmdShoot(Vector3 pos, Vector3 vel)
+    {
+        pManager.SpawnBullet(pos, vel);
+    }
+
     #region Use-Items
     void Bomb()
     {
         if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
         {
             itemSlot = PowerUp.Type.NULL;
-            GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
-            explosion.GetComponent<Explosion>().isActive = true;
-            explosion.GetComponent<Explosion>().fromPlayer = this;
+            CmdUseBomb();
         }
 
     }
+    [Command]
+    void CmdUseBomb()
+    {
+        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+        explosion.GetComponent<Explosion>().isActive = true;
+        explosion.GetComponent<Explosion>().fromPlayer = this;
+        RpcUseBomb();
+    }
+
+    [ClientRpc]
+    void RpcUseBomb()
+    {
+        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+        explosion.GetComponent<Explosion>().isActive = true;
+        explosion.GetComponent<Explosion>().fromPlayer = this;
+    }
+
 
     void Shield()
     {
         if (shieldTimer > 0 && phase == GamePhase.Fly)
-        {
             shieldTimer -= Time.deltaTime;
-        }
-        else
-        {
-            //activeShield = false;
-            shield.SetActive(false);
-        }
+        else if (activeShield)
+            CmdUpdateShield(false);
 
         // Activate Shield
         if (itemSlot == PowerUp.Type.Shield && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKeyDown(KeyCode.F)))
         {
-            //activeShield = true;
             shieldTimer = 8;
-            shield.SetActive(true);
+            CmdUpdateShield(true);
             itemSlot = PowerUp.Type.NULL;
         }
+    }
+
+    [Command]
+    public void CmdUpdateShield(bool active)
+    {
+        activeShield = active;
+        shield.GetComponent<MeshRenderer>().enabled = active;
+        shield.GetComponent<CapsuleCollider>().enabled = active;
+        RpcUpdateShield(active);
+    }
+
+    [ClientRpc]
+    private void RpcUpdateShield(bool active)
+    {
+        activeShield = active;
+        shield.GetComponent<MeshRenderer>().enabled = active;
+        shield.GetComponent<CapsuleCollider>().enabled = active;
     }
     #endregion
 
@@ -559,6 +646,17 @@ public class PlayerBehaviour : NetworkBehaviour
     public GamePhase CurrentPhase
     {
         get { return phase; }
+    }
+    public bool Grounded
+    {
+        get { return grounded; }
+        set { grounded = value; }
+    }
+
+    public bool GameOver
+    {
+        get { return gameOver; }
+        set { gameOver = value; }
     }
 
     public int Countdown

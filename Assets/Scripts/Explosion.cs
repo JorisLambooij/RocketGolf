@@ -28,9 +28,16 @@ public class Explosion : MonoBehaviour {
             {
                 Rigidbody rb = hit.GetComponentInParent<Rigidbody>();
 
-                if (rb != null && hit.GetComponentInParent<PlayerBehaviour>() != fromPlayer)
+                PlayerBehaviour playerScript = hit.GetComponentInParent<PlayerBehaviour>();
+                if (rb != null && playerScript != null && playerScript != fromPlayer)
                 {
-                    rb.AddExplosionForce(explosionForce, transform.position, explosionRadius);
+                    if (!playerScript.activeShield)
+                    {
+                        rb.AddExplosionForce(explosionForce, transform.position, explosionRadius);
+                        playerScript.Grounded = true;
+                    }
+                    else
+                        playerScript.CmdUpdateShield(false);
                 }
             }
         }

@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
-public class ProjectileManager : MonoBehaviour {
+public class ProjectileManager : NetworkBehaviour {
 
     public GameObject BulletPrefab;
 
@@ -20,50 +21,29 @@ public class ProjectileManager : MonoBehaviour {
         activeBulletList = new List<GameObject>(100);
         bulletTimers = new List<float>(100);
 
-        for (int i = 0; i < 50; i++)
+        for (int i = 0; i < 1; i++)
         {
             GameObject bullet = Instantiate(BulletPrefab, this.transform);
             bullet.SetActive(false);
             bulletList.Add(bullet);
         }
     }
-	
+    
+    // Receive incoming "shooting requests" and call the actual spawning method on all clients + host
     public void SpawnBullet(Vector3 position, Vector3 velocity)
     {
-        if(bulletList.Count > 0)
-        {
-            // "Free" Bullet available
-            GameObject b = bulletList[bulletList.Count-1];
-
-            b.SetActive(true);
-            b.GetComponent<Rigidbody>().velocity = velocity;
-            b.transform.position = position;
-            b.transform.up = velocity.normalized;
-
-            activeBulletList.Add(b);
-            bulletTimers.Add(bulletLifetime);
-
-            bulletList.RemoveAt(bulletList.Count-1);
-        }
+        RpcSpawnOnClient(position, velocity);
     }
 
-	// Update is called once per frame
-	void Update ()
+    [ClientRpc]
+    private void RpcSpawnOnClient(Vector3 position, Vector3 velocity)
     {
-        for(int i = 0; i < activeBulletList.Count; i++)
-        {
-            bulletTimers[i] -= Time.deltaTime;
-            if(bulletTimers[i] <= 0)
-            {
-                bulletTimers.RemoveAt(i);
+        GameObject b = Instantiate(BulletPrefab, this.transform);
 
-                GameObject b = activeBulletList[i];
-                b.SetActive(false);
-                bulletList.Add(b);
+        b.GetComponent<Rigidbody>().velocity = velocity;
+        b.transform.position = position;
+        b.transform.up = velocity.normalized;
 
-                activeBulletList.RemoveAt(i);
-                i--;
-            }
-        }
-	}
+        Destroy(b, 5);
+    }
 }

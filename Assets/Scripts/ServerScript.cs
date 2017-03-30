@@ -16,7 +16,7 @@ public class ServerScript : NetworkBehaviour {
     public bool isHost = false;
 
     public SyncListBool playersSwitched;
-
+    
     [SyncVar]
     public PlayerBehaviour.GamePhase globalPhase;
     
@@ -25,7 +25,7 @@ public class ServerScript : NetworkBehaviour {
         winningPlayer = 0;
         playersReady = new SyncListBool();
         playersSwitched = new SyncListBool();
-
+        
         globalPhase = PlayerBehaviour.GamePhase.Prepare;
 
         noOfPlayers = GameObject.Find("GameSettings").GetComponent<GameSettings>().numberOfPlayers;
@@ -50,8 +50,6 @@ public class ServerScript : NetworkBehaviour {
             }
             return;
         }
-        
-        
 
         // Check if everyone is ready to continue
         bool allReady = true;
@@ -108,5 +106,6 @@ public class ServerScript : NetworkBehaviour {
         playersReady.Add(false);
         playersSwitched.Add(false);
     }
-    
+
+
 }
