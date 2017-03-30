@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.Audio;
 
 public class PlayerBehaviour : NetworkBehaviour
 {
     [SyncVar (hook= "changePNo")]
     public int pNo;
+
     private void changePNo(int newPno)
     {
         pNo = newPno;
@@ -20,11 +22,6 @@ public class PlayerBehaviour : NetworkBehaviour
     public bool ready = false;
     [SyncVar]
     public GameObject hostRocket;
-
-    [SyncVar]
-    public bool activeShield;
-
-
     //[SyncVar]
     //public string GOname = "PlayerRocket";
 
@@ -37,6 +34,9 @@ public class PlayerBehaviour : NetworkBehaviour
 
     public bool invertX;
     public bool invertY;
+
+    public AudioSource audiosource;
+    public AudioClip[] audioClip;
 
     #region Rocket's Stats
     public float maxVelocity;
@@ -79,8 +79,7 @@ public class PlayerBehaviour : NetworkBehaviour
     private float fuelAfter;
 
     private float shotTimer;
-    private bool gameOver;
-
+    
     private PowerUp.Type itemSlot;
 
     public PlayerBehaviour hostScript;
@@ -106,9 +105,6 @@ public class PlayerBehaviour : NetworkBehaviour
         health = maxHealth;
         //goLaunch = false;
         ready = false;
-        activeShield = false;
-        gameOver = false;
-
         itemSlot = PowerUp.Type.NULL;
 
         goal = GameObject.Find("Goal").transform;
@@ -136,30 +132,10 @@ public class PlayerBehaviour : NetworkBehaviour
             playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
         }
     }
-
-    public void QuitGame()
-    {
-        Network.Disconnect();
-        UnityEngine.SceneManagement.SceneManager.LoadScene("Menu");
-        NetworkManagerHUD netHUD = GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>();
-        netHUD.showGUI = true;
-        NetworkManager netMan = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
-        if (isServer)
-            netMan.StopHost();
-        else
-            netMan.StopClient();
-    }
-
-    void Update ()
+    
+	void Update ()
     {
         currPhase = phase;
-
-        // ESC = Quit the Game
-        if(Input.GetKeyDown(KeyCode.Escape))
-        {
-            QuitGame();
-        }
-
         // process only the local player, ignore other players
         if (!isLocalPlayer || !registeredClient)
             return;
@@ -182,6 +158,14 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.angularVelocity = Vector3.zero;
 
         PutReady();
+    }
+
+    public void PlaySound(int clip)
+    {
+        audioClip[clip] = GetComponent<AudioSource>().clip;
+        //audiosource.clip = audioClip[clip];
+        //audiosource.Play();
+       
     }
 
     public void SwitchPhase()
@@ -214,7 +198,7 @@ public class PlayerBehaviour : NetworkBehaviour
     private void Phase_Prepare()
     {
         playerRB.velocity = Vector3.zero;
-        
+
         if(!ready)
             RotationControls();
         
@@ -229,13 +213,14 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         //Combat();
         LaunchCountdown();
-
+        
         if(!ready)
             playerRB.velocity = Vector3.zero;
 
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
+            PlaySound(1);
         }
         
         if (!launchPressed)
@@ -332,7 +317,9 @@ public class PlayerBehaviour : NetworkBehaviour
         if (health <= 0 && !grounded)
         {
             playerRB.mass = 10000;
+            //playerRB.transform.RotateAround(this.transform.position, this.transform.right, 6);
             playerRB.transform.RotateAround(this.transform.position, this.transform.up, 6);
+            //playerRB.transform.RotateAround(this.transform.position, this.transform.forward, 2);
         }
     }
 
@@ -375,8 +362,7 @@ public class PlayerBehaviour : NetworkBehaviour
         shotTimer -= Time.deltaTime;
         if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P1Fire") > 0)
         {
-            CmdShoot(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
-            //pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+            pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
             shotTimer = 1 / ShotFrequency / Input.GetAxis("P1Fire");
         }
@@ -417,13 +403,6 @@ public class PlayerBehaviour : NetworkBehaviour
         Bomb();
         Shield();
     }
-    
-    // Redirect the "Shooting command" to the projectile manager on the server
-    [Command]
-    private void CmdShoot(Vector3 pos, Vector3 vel)
-    {
-        pManager.SpawnBullet(pos, vel);
-    }
 
     // Method to handle the rotation of the rocket (WASD + Q,E Keys)
     void RotationControls()
@@ -453,7 +432,7 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         hostRocket.GetComponent<ServerScript>().winningPlayer = this.pNo;
     }
-    
+
     void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag("Ground"))
@@ -461,13 +440,7 @@ public class PlayerBehaviour : NetworkBehaviour
             grounded = true;
             playerRB.drag = 0.0005f;
             playerRB.angularDrag = 8;
-        }
-        else if (collision.collider.CompareTag("Projectile"))
-        {
-            Destroy(collision.collider.gameObject);
-
-            if (!activeShield)
-                playerRB.AddExplosionForce(15, collision.collider.transform.position, 2);
+            
         }
     }
     
@@ -520,26 +493,11 @@ public class PlayerBehaviour : NetworkBehaviour
         if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
         {
             itemSlot = PowerUp.Type.NULL;
-            CmdUseBomb();
+            GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+            explosion.GetComponent<Explosion>().isActive = true;
+            explosion.GetComponent<Explosion>().fromPlayer = this;
         }
 
-    }
-
-    [Command]
-    void CmdUseBomb()
-    {
-        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
-        explosion.GetComponent<Explosion>().isActive = true;
-        explosion.GetComponent<Explosion>().fromPlayer = this;
-        RpcUseBomb();
-    }
-
-    [ClientRpc]
-    void RpcUseBomb()
-    {
-        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
-        explosion.GetComponent<Explosion>().isActive = true;
-        explosion.GetComponent<Explosion>().fromPlayer = this;
     }
 
     void Shield()
@@ -548,39 +506,21 @@ public class PlayerBehaviour : NetworkBehaviour
         {
             shieldTimer -= Time.deltaTime;
         }
-        else if(activeShield)
+        else
         {
-            CmdUpdateShield(false);
-            //DisableShield();
+            //activeShield = false;
+            shield.SetActive(false);
         }
 
         // Activate Shield
         if (itemSlot == PowerUp.Type.Shield && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKeyDown(KeyCode.F)))
         {
+            //activeShield = true;
             shieldTimer = 8;
-            //EnableShield();
-            CmdUpdateShield(true);
+            shield.SetActive(true);
             itemSlot = PowerUp.Type.NULL;
         }
     }
-    
-    [Command]
-    public void CmdUpdateShield(bool active)
-    {
-        activeShield = active;
-        shield.GetComponent<MeshRenderer>().enabled = active;
-        shield.GetComponent<CapsuleCollider>().enabled = active;
-        RpcUpdateShield(active);
-    }
-
-    [ClientRpc]
-    private void RpcUpdateShield(bool active)
-    {
-        activeShield = active;
-        shield.GetComponent<MeshRenderer>().enabled = active;
-        shield.GetComponent<CapsuleCollider>().enabled = active;
-    }
-
     #endregion
 
     #region Commands to sync phases
@@ -595,7 +535,6 @@ public class PlayerBehaviour : NetworkBehaviour
         {
             this.ready = true;
             hostRocket.GetComponent<ServerScript>().playersReady[pNo - 1] = true;
-            Debug.Log("Player " + pNo + " is ready");
         }
     }
     private void PutNotReady()
@@ -622,18 +561,6 @@ public class PlayerBehaviour : NetworkBehaviour
     public int Magazine
     {
         get { return magazine; }
-    }
-
-    public bool Grounded
-    {
-        get { return grounded; }
-        set { grounded = value; }
-    }
-
-    public bool GameOver
-    {
-        get { return gameOver; }
-        set { gameOver = value; }
     }
 
     public float CurrHealth
