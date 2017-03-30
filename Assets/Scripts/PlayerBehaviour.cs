@@ -320,6 +320,10 @@ public class PlayerBehaviour : NetworkBehaviour
         fuel = Mathf.Min(100, fuel + 40);
         fuelAfter = fuel;
 
+        health = Mathf.Min(maxHealth, health + maxHealth / 2);
+
+        ammo += 20;
+
         playerRB.drag = 0;
 
         playerRB.transform.position += new Vector3(0, 4, 0);
