@@ -35,9 +35,10 @@ public class PlayerBehaviour : NetworkBehaviour
 
     public bool invertX;
     public bool invertY;
-
-    public AudioSource audiosource;
+    
     public AudioClip[] audioClip;
+
+    public AudioClip laserSound;
 
     #region Rocket's Stats
     public float maxVelocity;
@@ -107,7 +108,10 @@ public class PlayerBehaviour : NetworkBehaviour
         health = maxHealth;
         //goLaunch = false;
         ready = false;
-        itemSlot = PowerUp.Type.NULL;
+
+        // TODO: Set to NULL
+        itemSlot = PowerUp.Type.Bomb;
+
         activeShield = false;
         gameOver = false;
 
@@ -221,6 +225,9 @@ public class PlayerBehaviour : NetworkBehaviour
     private void Phase_Prepare()
     {
         playerRB.velocity = Vector3.zero;
+
+        // TODO: Remove
+        Combat();
 
         if(!ready)
             RotationControls();
@@ -385,7 +392,12 @@ public class PlayerBehaviour : NetworkBehaviour
         shotTimer -= Time.deltaTime;
         if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P1Fire") > 0)
         {
-            CmdShoot(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+            Vector3 flyDir = (cam.CameraDirection + new Vector3(0, .2f, 0)).normalized;
+            CmdShoot(transform.position + flyDir * 10, flyDir * 150);
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[1];
+            audioPlayer.Play();
 
             //pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
