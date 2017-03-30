@@ -22,8 +22,9 @@ public class PlayerBehaviour : NetworkBehaviour
     public bool ready = false;
     [SyncVar]
     public GameObject hostRocket;
-    //[SyncVar]
-    //public string GOname = "PlayerRocket";
+
+    [SyncVar]
+    public bool activeShield;
 
     public Rigidbody playerRB;
     public Transform goal;
@@ -81,6 +82,7 @@ public class PlayerBehaviour : NetworkBehaviour
     private float shotTimer;
     
     private PowerUp.Type itemSlot;
+    private bool gameOver;
 
     public PlayerBehaviour hostScript;
     
@@ -106,6 +108,8 @@ public class PlayerBehaviour : NetworkBehaviour
         //goLaunch = false;
         ready = false;
         itemSlot = PowerUp.Type.NULL;
+        activeShield = false;
+        gameOver = false;
 
         goal = GameObject.Find("Goal").transform;
         pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
@@ -132,10 +136,29 @@ public class PlayerBehaviour : NetworkBehaviour
             playerRB.transform.rotation = Quaternion.Euler(new Vector3(0, -90, -60));
         }
     }
-    
-	void Update ()
+    public void QuitGame()
+    {
+        Network.Disconnect();
+        UnityEngine.SceneManagement.SceneManager.LoadScene("Menu");
+        NetworkManagerHUD netHUD = GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>();
+        netHUD.showGUI = true;
+        NetworkManager netMan = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
+        if (isServer)
+            netMan.StopHost();
+        else
+            netMan.StopClient();
+    }
+
+    void Update ()
     {
         currPhase = phase;
+
+        // ESC = Quit the Game
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            QuitGame();
+        }
+
         // process only the local player, ignore other players
         if (!isLocalPlayer || !registeredClient)
             return;
@@ -362,7 +385,9 @@ public class PlayerBehaviour : NetworkBehaviour
         shotTimer -= Time.deltaTime;
         if (!reloading && shotTimer <= 0 && magazine > 0 && Input.GetAxis("P1Fire") > 0)
         {
-            pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+            CmdShoot(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
+
+            //pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
             magazine--;
             shotTimer = 1 / ShotFrequency / Input.GetAxis("P1Fire");
         }
@@ -440,11 +465,16 @@ public class PlayerBehaviour : NetworkBehaviour
             grounded = true;
             playerRB.drag = 0.0005f;
             playerRB.angularDrag = 8;
-            
+        }
+        else if (collision.collider.CompareTag("Projectile"))
+        {
+            Destroy(collision.collider.gameObject);
+            if (!activeShield)
+                playerRB.AddExplosionForce(15, collision.collider.transform.position, 2);
         }
     }
-    
-    void OnTriggerEnter(Collider collider)
+
+        void OnTriggerEnter(Collider collider)
     {
         // Check for Power-Ups here
         if (collider.CompareTag("Finish"))
@@ -487,39 +517,72 @@ public class PlayerBehaviour : NetworkBehaviour
         }
     }
 
+    // Redirect the "Shooting command" to the projectile manager on the server
+    [Command]
+    private void CmdShoot(Vector3 pos, Vector3 vel)
+    {
+        pManager.SpawnBullet(pos, vel);
+    }
+
     #region Use-Items
     void Bomb()
     {
         if (itemSlot == PowerUp.Type.Bomb && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKey(KeyCode.F)))
         {
             itemSlot = PowerUp.Type.NULL;
-            GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
-            explosion.GetComponent<Explosion>().isActive = true;
-            explosion.GetComponent<Explosion>().fromPlayer = this;
+            CmdUseBomb();
         }
 
     }
+    [Command]
+    void CmdUseBomb()
+    {
+        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+        explosion.GetComponent<Explosion>().isActive = true;
+        explosion.GetComponent<Explosion>().fromPlayer = this;
+        RpcUseBomb();
+    }
+
+    [ClientRpc]
+    void RpcUseBomb()
+    {
+        GameObject explosion = Instantiate(explosionprefab, playerRB.position, Quaternion.identity);
+        explosion.GetComponent<Explosion>().isActive = true;
+        explosion.GetComponent<Explosion>().fromPlayer = this;
+    }
+
 
     void Shield()
     {
         if (shieldTimer > 0 && phase == GamePhase.Fly)
-        {
             shieldTimer -= Time.deltaTime;
-        }
-        else
-        {
-            //activeShield = false;
-            shield.SetActive(false);
-        }
+        else if (activeShield)
+            CmdUpdateShield(false);
 
         // Activate Shield
         if (itemSlot == PowerUp.Type.Shield && (Input.GetKeyDown(KeyCode.Joystick1Button4) || Input.GetKeyDown(KeyCode.F)))
         {
-            //activeShield = true;
             shieldTimer = 8;
-            shield.SetActive(true);
+            CmdUpdateShield(true);
             itemSlot = PowerUp.Type.NULL;
         }
+    }
+
+    [Command]
+    public void CmdUpdateShield(bool active)
+    {
+        activeShield = active;
+        shield.GetComponent<MeshRenderer>().enabled = active;
+        shield.GetComponent<CapsuleCollider>().enabled = active;
+        RpcUpdateShield(active);
+    }
+
+    [ClientRpc]
+    private void RpcUpdateShield(bool active)
+    {
+        activeShield = active;
+        shield.GetComponent<MeshRenderer>().enabled = active;
+        shield.GetComponent<CapsuleCollider>().enabled = active;
     }
     #endregion
 
@@ -571,6 +634,17 @@ public class PlayerBehaviour : NetworkBehaviour
     public GamePhase CurrentPhase
     {
         get { return phase; }
+    }
+    public bool Grounded
+    {
+        get { return grounded; }
+        set { grounded = value; }
+    }
+
+    public bool GameOver
+    {
+        get { return gameOver; }
+        set { gameOver = value; }
     }
 
     public int Countdown
