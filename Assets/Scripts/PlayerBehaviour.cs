@@ -400,6 +400,17 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.AddTorque(torque1 + torque2 + torque3);
     }
 
+    void I_Win()
+    {
+        Cmd_I_Win();
+    }
+
+    [Command]
+    private void Cmd_I_Win()
+    {
+        hostRocket.GetComponent<ServerScript>().winningPlayer = this.pNo;
+    }
+
     void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag("Ground"))
@@ -415,8 +426,7 @@ public class PlayerBehaviour : NetworkBehaviour
         // Check for Power-Ups here
         if (collider.CompareTag("Finish"))
         {
-            //Debug.Log("YOU WIN!");
-            UnityEngine.SceneManagement.SceneManager.LoadScene("Game");
+            I_Win();
         }
 
         if (collider.CompareTag("Power-Up"))

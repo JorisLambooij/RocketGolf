@@ -8,7 +8,10 @@ public class ServerScript : NetworkBehaviour {
     
     public int noOfPlayers;
     public SyncListBool playersReady;
-    
+
+    [SyncVar]
+    public int winningPlayer;
+
     [SyncVar]
     public bool isHost = false;
 
@@ -19,6 +22,7 @@ public class ServerScript : NetworkBehaviour {
     
     void Awake()
     {
+        winningPlayer = 0;
         playersReady = new SyncListBool();
         playersSwitched = new SyncListBool();
 
