@@ -25,6 +25,7 @@ public class PlayerBehaviour : NetworkBehaviour
 
     [SyncVar]
     public bool activeShield;
+    public bool playdeath;
 
     public Rigidbody playerRB;
     public Transform goal;
@@ -214,6 +215,11 @@ public class PlayerBehaviour : NetworkBehaviour
                 phase = GamePhase.Launch;
                 playerRB.angularDrag = 4;
                 launchTimer = 5;
+
+                AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+                audioPlayer.clip = audioClip[5];
+                audioPlayer.Play();
+
                 break;
             case GamePhase.Launch:
                 phase = GamePhase.Fly;
@@ -250,7 +256,7 @@ public class PlayerBehaviour : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
-            PlaySound(1);
+
         }
         
         if (!launchPressed)
@@ -305,6 +311,13 @@ public class PlayerBehaviour : NetworkBehaviour
         countdown = (int)launchTimer + 1;
         // Maybe add super cool sound effects here?
         launchTimer -= Time.deltaTime;
+
+        if (launchTimer < 4 && launchTimer > 3 )
+        {
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[10];
+            audioPlayer.Play();
+        }
     }
 
     private void Phase_Fly()
@@ -312,12 +325,17 @@ public class PlayerBehaviour : NetworkBehaviour
         if (health > 0)
         Combat();
 
+
         if (fuel > 0 && health > 0 && (Input.GetKey(KeyCode.Joystick1Button0) || Input.GetKey(KeyCode.Space)))
         {
             // Apply forward thrust
             Vector3 thrustForce = playerRB.transform.up * thrusterForce * Time.deltaTime * 100;
             playerRB.AddForce(thrustForce);
             fuel -= fuel_consumption * Time.deltaTime;
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[0];
+            audioPlayer.Play();
         }
 
         // Calculate the angle between the direction the rocket is facing
@@ -350,6 +368,14 @@ public class PlayerBehaviour : NetworkBehaviour
             //playerRB.transform.RotateAround(this.transform.position, this.transform.right, 6);
             playerRB.transform.RotateAround(this.transform.position, this.transform.up, 6);
             //playerRB.transform.RotateAround(this.transform.position, this.transform.forward, 2);
+
+            if (playdeath == false)
+            {
+                AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+                audioPlayer.clip = audioClip[8];
+                audioPlayer.Play();
+                playdeath = true;
+            }
         }
     }
 
@@ -361,6 +387,7 @@ public class PlayerBehaviour : NetworkBehaviour
         launchTimer = 5;
         prepareTimer = 30;
         playerRB.mass = 1;
+        playdeath = false;
 
         CmdPutNotReady();
 
@@ -396,7 +423,7 @@ public class PlayerBehaviour : NetworkBehaviour
             CmdShoot(transform.position + flyDir * 10, flyDir * 150);
 
             AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
-            audioPlayer.clip = audioClip[1];
+            audioPlayer.clip = audioClip[6];
             audioPlayer.Play();
 
             //pManager.SpawnBullet(transform.position + cam.CameraDirection * 4, cam.CameraDirection * 150);
@@ -477,12 +504,20 @@ public class PlayerBehaviour : NetworkBehaviour
             grounded = true;
             playerRB.drag = 0.0005f;
             playerRB.angularDrag = 8;
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[2];
+            audioPlayer.Play();
         }
         else if (collision.collider.CompareTag("Projectile"))
         {
             Destroy(collision.collider.gameObject);
             if (!activeShield)
                 playerRB.AddExplosionForce(15, collision.collider.transform.position, 2);
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[9];
+            audioPlayer.Play();
         }
     }
 
@@ -499,6 +534,10 @@ public class PlayerBehaviour : NetworkBehaviour
             // Remove power up object
             Destroy(collider.gameObject);
             PowerUp powerUp = collider.GetComponent<PowerUp>();
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[4];
+            audioPlayer.Play();
 
             switch (powerUp.type)
             {
@@ -543,6 +582,10 @@ public class PlayerBehaviour : NetworkBehaviour
         {
             itemSlot = PowerUp.Type.NULL;
             CmdUseBomb();
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[3];
+            audioPlayer.Play();
         }
 
     }
@@ -577,6 +620,10 @@ public class PlayerBehaviour : NetworkBehaviour
             shieldTimer = 8;
             CmdUpdateShield(true);
             itemSlot = PowerUp.Type.NULL;
+
+            AudioSource audioPlayer = gameObject.GetComponent<AudioSource>();
+            audioPlayer.clip = audioClip[12];
+            audioPlayer.Play();
         }
     }
 
