@@ -11,6 +11,7 @@ public class GameSettings : MonoBehaviour
     void Start()
     {
         DontDestroyOnLoad(this.gameObject);
+        DontDestroyOnLoad(GameObject.Find("BGM"));
     }
 
     public void ChangeNumberOfPlayers(Slider slider)

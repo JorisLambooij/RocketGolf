@@ -32,6 +32,7 @@ public class ProjectileManager : NetworkBehaviour {
     // Receive incoming "shooting requests" and call the actual spawning method on all clients + host
     public void SpawnBullet(Vector3 position, Vector3 velocity)
     {
+        Debug.Log(connectionToClient);
         RpcSpawnOnClient(position, velocity);
     }
 
@@ -39,11 +40,11 @@ public class ProjectileManager : NetworkBehaviour {
     private void RpcSpawnOnClient(Vector3 position, Vector3 velocity)
     {
         GameObject b = Instantiate(BulletPrefab, this.transform);
-
+        
         b.GetComponent<Rigidbody>().velocity = velocity;
         b.transform.position = position;
         b.transform.up = velocity.normalized;
-
+        
         Destroy(b, 5);
     }
 }
