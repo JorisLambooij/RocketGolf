@@ -25,6 +25,7 @@ public class UI_Script : MonoBehaviour {
     public Sprite itemBomb;
 
     private float countdownTextTimer;
+    private float gameOverTimer;
 
     private const float maxHealthOffset = -318;
 
@@ -40,7 +41,8 @@ public class UI_Script : MonoBehaviour {
         healthText = GameObject.Find("Health Bar Text").GetComponent<Text>();
         itemSlot = GameObject.Find("Item Slot").GetComponent<Image>();
 
-        GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>().showGUI = false;
+        NetworkManagerHUD netHUD = GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>();
+        netHUD.showGUI = false;
     }
 
     void Update()
@@ -83,13 +85,25 @@ public class UI_Script : MonoBehaviour {
             countdownText.text = "LAUNCH!";
             countdownTextTimer -= Time.deltaTime;
         }
-        else if(playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Fly)
+        else if(playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Fly && !playerScript.GameOver)
         {
             countdownText.text = "+";
         }
 
-        if (playerScript.hostRocket.GetComponent<ServerScript>().winningPlayer != 0)
+        if (playerScript.hostRocket != null && playerScript.hostRocket.GetComponent<ServerScript>().winningPlayer != 0 && !playerScript.GameOver)
+        {
             countdownText.text = "Player " + playerScript.hostRocket.GetComponent<ServerScript>().winningPlayer + " wins!";
+            gameOverTimer = 2;
+            playerScript.GameOver = true;
+        }
+        if (gameOverTimer > 0 && playerScript.GameOver)
+        {
+            gameOverTimer -= Time.deltaTime;
+            if(gameOverTimer <= 0)
+            {
+                playerScript.QuitGame();
+            }
+        }
     }
 
     private void FuelMeter()
