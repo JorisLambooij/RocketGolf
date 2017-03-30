@@ -203,7 +203,7 @@ public class PlayerBehaviour : NetworkBehaviour
 
     private void Phase_Launch()
     {
-        Combat();
+        //Combat();
         LaunchCountdown();
 
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
@@ -272,9 +272,10 @@ public class PlayerBehaviour : NetworkBehaviour
 
     private void Phase_Fly()
     {
+        if (health > 0)
         Combat();
 
-        if (fuel > 0 && (Input.GetKey(KeyCode.Joystick1Button0) || Input.GetKey(KeyCode.Space)))
+        if (fuel > 0 && health > 0 && (Input.GetKey(KeyCode.Joystick1Button0) || Input.GetKey(KeyCode.Space)))
         {
             // Apply forward thrust
             Vector3 thrustForce = playerRB.transform.up * thrusterForce * Time.deltaTime * 100;
@@ -297,13 +298,21 @@ public class PlayerBehaviour : NetworkBehaviour
         }
 
         // Disable controls (except for thrust) after collision
-        if (!grounded)
+        if (!grounded && health > 0)
             RotationControls();
         // After collision, wait until the rocket stops moving, then switch to Wait Phase
         else if(playerRB.velocity.magnitude < 0.30f)
         {
             PutReady();
             //SwitchPhase();
+        }
+
+        if (health <= 0 && !grounded)
+        {
+            playerRB.mass = 10000;
+            //playerRB.transform.RotateAround(this.transform.position, this.transform.right, 6);
+            playerRB.transform.RotateAround(this.transform.position, this.transform.up, 6);
+            //playerRB.transform.RotateAround(this.transform.position, this.transform.forward, 2);
         }
     }
 
@@ -314,6 +323,7 @@ public class PlayerBehaviour : NetworkBehaviour
         grounded = false;
         launchTimer = 5;
         prepareTimer = 30;
+        playerRB.mass = 1;
 
         CmdPutNotReady();
 
@@ -412,6 +422,7 @@ public class PlayerBehaviour : NetworkBehaviour
             grounded = true;
             playerRB.drag = 0.0005f;
             playerRB.angularDrag = 8;
+            
         }
     }
     
