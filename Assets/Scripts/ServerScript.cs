@@ -5,14 +5,10 @@ using UnityEngine.Networking;
 
 public class ServerScript : NetworkBehaviour {
 
-
-    //public SyncList<GameObject> playerRockets;
+    
     public int noOfPlayers;
     public SyncListBool playersReady;
-
-    //[SyncVar]
-    //public bool switchNow;
-
+    
     [SyncVar]
     public bool isHost = false;
 
@@ -23,7 +19,6 @@ public class ServerScript : NetworkBehaviour {
     
     void Awake()
     {
-        //playerRockets = new List<GameObject>();
         playersReady = new SyncListBool();
         playersSwitched = new SyncListBool();
 
@@ -42,7 +37,6 @@ public class ServerScript : NetworkBehaviour {
             GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
             foreach (GameObject player in players)
             {
-                Debug.Log(player.name);
                 if (!player.GetComponent<PlayerBehaviour>().registeredClient)
                 {
                     player.GetComponent<PlayerBehaviour>().hostRocket = this.gameObject;
@@ -74,7 +68,7 @@ public class ServerScript : NetworkBehaviour {
                 case (PlayerBehaviour.GamePhase.Fly): globalPhase = PlayerBehaviour.GamePhase.Wait; break;
                 case (PlayerBehaviour.GamePhase.Wait): globalPhase = PlayerBehaviour.GamePhase.Prepare; break;
             }
-            Debug.Log("Switching to GLOBAL phase: " + globalPhase);
+            //Debug.Log("Switching to GLOBAL phase: " + globalPhase);
         }
         /*
         if(switchNow)

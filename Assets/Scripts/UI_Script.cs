@@ -80,11 +80,10 @@ public class UI_Script : MonoBehaviour {
             countdownText.text = "LAUNCH!";
             countdownTextTimer -= Time.deltaTime;
         }
-        else
+        else if(playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Fly)
         {
             countdownText.text = "+";
         }
-
     }
 
     private void FuelMeter()

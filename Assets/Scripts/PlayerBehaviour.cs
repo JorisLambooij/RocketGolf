@@ -179,10 +179,9 @@ public class PlayerBehaviour : NetworkBehaviour
                 break;
             case GamePhase.Launch:
                 phase = GamePhase.Fly;
+                launchPressed = false;
                 break;
         }
-
-        Debug.Log("Switching to phase: " + phase);
     }
 
     private void Phase_Prepare()
@@ -192,8 +191,6 @@ public class PlayerBehaviour : NetworkBehaviour
         if(!ready)
             RotationControls();
         
-        //PrepareCountdown();
-
         // Press Joystick.A, Spacebar or wait for the timer
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space) || prepareTimer <= 0)
         {
@@ -205,6 +202,9 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         Combat();
         LaunchCountdown();
+
+        if(!ready)
+            playerRB.velocity = Vector3.zero;
 
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
@@ -237,25 +237,20 @@ public class PlayerBehaviour : NetworkBehaviour
             }
         }
 
-
-        if (launchTimer <= 0)
+        if (launchTimer <= 0 && !ready)
         {
             // Adjust the force according to the amount of fuel consumed
             // Add a little bit to the fuel consumed to boost very weak launches (prevents "zero-force"-launches)
             Vector3 thrustForce = playerRB.transform.up * launchForce * (20 + fuel - fuelAfter) * Time.deltaTime * 20;
             playerRB.AddForce(thrustForce);
-            
+
             // Adjust fuel stand
+            
             fuel = fuelAfter;
-
             playerRB.useGravity = true;
-
             PutReady();
-
             countdown = 0;
-            launchPressed = false;
         }
-        playerRB.velocity = Vector3.zero;
     }
 
     private void PrepareCountdown()
@@ -300,7 +295,7 @@ public class PlayerBehaviour : NetworkBehaviour
         if (!grounded)
             RotationControls();
         // After collision, wait until the rocket stops moving, then switch to Wait Phase
-        else if(playerRB.velocity.magnitude < 0.30f)
+        else if(playerRB.velocity.magnitude < 0.35f)
         {
             PutReady();
             //SwitchPhase();
@@ -470,7 +465,7 @@ public class PlayerBehaviour : NetworkBehaviour
 
     void Shield()
     {
-        if (shieldTimer > 0)
+        if (shieldTimer > 0 && phase == GamePhase.Fly)
         {
             shieldTimer -= Time.deltaTime;
         }
