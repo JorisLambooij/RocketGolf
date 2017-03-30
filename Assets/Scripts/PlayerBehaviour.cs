@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.Audio;
 
 public class PlayerBehaviour : NetworkBehaviour
 {
@@ -33,6 +34,9 @@ public class PlayerBehaviour : NetworkBehaviour
 
     public bool invertX;
     public bool invertY;
+
+    public AudioSource audiosource;
+    public AudioClip[] audioClip;
 
     #region Rocket's Stats
     public float maxVelocity;
@@ -132,7 +136,6 @@ public class PlayerBehaviour : NetworkBehaviour
 	void Update ()
     {
         currPhase = phase;
-
         // process only the local player, ignore other players
         if (!isLocalPlayer || !registeredClient)
             return;
@@ -155,6 +158,14 @@ public class PlayerBehaviour : NetworkBehaviour
         playerRB.angularVelocity = Vector3.zero;
 
         PutReady();
+    }
+
+    public void PlaySound(int clip)
+    {
+        audioClip[clip] = GetComponent<AudioSource>().clip;
+        //audiosource.clip = audioClip[clip];
+        //audiosource.Play();
+       
     }
 
     public void SwitchPhase()
@@ -202,13 +213,14 @@ public class PlayerBehaviour : NetworkBehaviour
     {
         //Combat();
         LaunchCountdown();
-
+        
         if(!ready)
             playerRB.velocity = Vector3.zero;
 
         if (Input.GetKeyDown(KeyCode.Joystick1Button0) || Input.GetKeyDown(KeyCode.Space))
         {
             launchPressed = true;
+            PlaySound(1);
         }
         
         if (!launchPressed)
