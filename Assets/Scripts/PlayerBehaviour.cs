@@ -115,7 +115,7 @@ public class PlayerBehaviour : NetworkBehaviour
         activeShield = false;
         gameOver = false;
 
-        goal = GameObject.Find("Goal").transform;
+        goal = GameObject.Find("Goal 1").transform;
         pManager = GameObject.Find("Projectile Manager GO").GetComponent<ProjectileManager>();
         cam = GameObject.Find("Camera").GetComponent<CameraBehaviour>();
 
