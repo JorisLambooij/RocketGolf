@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 
 public class UI_Script : MonoBehaviour {
 
@@ -38,6 +39,8 @@ public class UI_Script : MonoBehaviour {
         healthBar = GameObject.Find("Health Bar Bar").GetComponent<Image>();
         healthText = GameObject.Find("Health Bar Text").GetComponent<Text>();
         itemSlot = GameObject.Find("Item Slot").GetComponent<Image>();
+
+        GameObject.Find("NetworkManager").GetComponent<NetworkManagerHUD>().showGUI = false;
     }
 
     void Update()
@@ -80,11 +83,13 @@ public class UI_Script : MonoBehaviour {
             countdownText.text = "LAUNCH!";
             countdownTextTimer -= Time.deltaTime;
         }
-        else
+        else if(playerScript.CurrentPhase == PlayerBehaviour.GamePhase.Fly)
         {
             countdownText.text = "+";
         }
 
+        if (playerScript.hostRocket.GetComponent<ServerScript>().winningPlayer != 0)
+            countdownText.text = "Player " + playerScript.hostRocket.GetComponent<ServerScript>().winningPlayer + " wins!";
     }
 
     private void FuelMeter()
